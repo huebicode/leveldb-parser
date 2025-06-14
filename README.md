@@ -27,4 +27,5 @@ The goal is to explore and understand the internal structure of LevelDB and impl
 
 ## Thesis Info
 
-This project is part of my Master’s thesis in *Digital forensics* at *Hochschule Albstadt-Sigmaringen*, Germany. I will link the final thesis here once it’s submitted.
+This project is part of my Master’s thesis in *Digital forensics* at *Hochschule Albstadt-Sigmaringen*, Germany. The final thesis will be uploaded here once it’s submitted.
+
