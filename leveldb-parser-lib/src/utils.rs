@@ -1,7 +1,7 @@
 const MASK_DELTA: u32 = 0xa282ead8;
 pub fn unmask_crc32c(masked_crc: u32) -> u32 {
     let rot = masked_crc.wrapping_sub(MASK_DELTA);
-    (rot >> 17) | (rot << 15)
+    rot.rotate_left(15)
 }
 
 pub fn decode_varint32(bytes: &[u8]) -> u32 {

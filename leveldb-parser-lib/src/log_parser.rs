@@ -13,28 +13,16 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
 
     let mut block_counter = 1;
     while reader.stream_position()? < file_size {
-        println!(
-            "----------------- [ Block {} ] -----------------",
-            block_counter
-        );
-
         let block = read_block(&mut reader)?;
 
-        if verify_crc(&block) {
-            println!("CRC (verified): {:02X}", block.crc);
-        } else {
-            println!("CRC (failed!): {:02X}", block.crc);
-        }
-
-        println!("Data Length: {}", block.data_len);
-        println!("Record Type: {}", block.block_type);
-        println!("Block Data: {:02X?}", block.data);
+        print_block(&block, block_counter);
 
         block_counter += 1;
     }
-
     Ok(())
 }
+
+// -----------------------------------------------------------------------------
 
 struct Block {
     crc: u32,
@@ -59,14 +47,47 @@ fn read_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
     })
 }
 
-fn verify_crc(block: &Block) -> bool {
-    let unmasked_crc = utils::unmask_crc32c(block.crc);
+// -----------------------------------------------------------------------------
 
+fn print_block(block: &Block, block_counter: u64) {
+    println!(
+        "################ [ Block {} ] #################",
+        block_counter
+    );
+
+    println!("------------------- Header -------------------");
+
+    if crc_verified(block) {
+        println!("CRC32C: {:02X} (verified)", block.crc);
+    } else {
+        println!("CRC32C: {:02X} (verification failed!)", block.crc);
+    }
+
+    println!("Data Length: {} Bytes", block.data_len);
+
+    match block.block_type {
+        0 => println!("Record Type: Zero (0)"),
+        1 => println!("Record Type: Full (1)"),
+        2 => println!("Record Type: First (2)"),
+        3 => println!("Record Type: Middle (3)"),
+        4 => println!("Record Type: Last (4)"),
+        _ => println!("Record Type: Unknown ({})", block.block_type),
+    }
+
+    println!("-------------------- Data --------------------");
+
+    println!("Block Data: {:02X?}", block.data);
+}
+
+// helper ----------------------------------------------------------------------
+
+fn crc_verified(block: &Block) -> bool {
     let mut buffer = Vec::with_capacity(1 + block.data.len());
     buffer.push(block.block_type);
     buffer.extend_from_slice(&block.data);
 
     let calculated_crc = crc32c(&buffer);
+    let unmasked_crc = utils::unmask_crc32c(block.crc);
 
-    unmasked_crc == calculated_crc
+    calculated_crc == unmasked_crc
 }
