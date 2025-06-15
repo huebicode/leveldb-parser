@@ -2,13 +2,16 @@ use std::fs::File;
 use std::io::{self, BufReader, Read, Seek};
 
 use byteorder::{LittleEndian, ReadBytesExt};
+use crc32c::crc32c;
+
+use crate::utils;
 
 pub fn parse_file(file_path: &str) -> io::Result<()> {
     let file = File::open(file_path)?;
     let file_size = file.metadata()?.len();
     let mut reader = BufReader::new(file);
 
-    let mut block_counter = 0;
+    let mut block_counter = 1;
     while reader.stream_position()? < file_size {
         println!(
             "----------------- [ Block {} ] -----------------",
@@ -17,7 +20,12 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
 
         let block = read_block(&mut reader)?;
 
-        println!("CRC (masked): {:02X}", block.crc);
+        if verify_crc(&block) {
+            println!("CRC (verified): {:02X}", block.crc);
+        } else {
+            println!("CRC (failed!): {:02X}", block.crc);
+        }
+
         println!("Data Length: {}", block.data_len);
         println!("Record Type: {}", block.block_type);
         println!("Block Data: {:02X?}", block.data);
@@ -49,4 +57,16 @@ fn read_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
         block_type,
         data,
     })
+}
+
+fn verify_crc(block: &Block) -> bool {
+    let unmasked_crc = utils::unmask_crc32c(block.crc);
+
+    let mut buffer = Vec::with_capacity(1 + block.data.len());
+    buffer.push(block.block_type);
+    buffer.extend_from_slice(&block.data);
+
+    let calculated_crc = crc32c(&buffer);
+
+    unmasked_crc == calculated_crc
 }

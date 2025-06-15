@@ -19,9 +19,9 @@ The goal is to explore and understand the internal structure of LevelDB and impl
 
 ## Planned Features
 
-- [ ] parse `.ldb` files
 - [ ] parse `.log` files
 - [ ] parse `MANIFEST` files
+- [ ] parse `.ldb` files
 - [ ] implement GUI with Tauri
 
 
