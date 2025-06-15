@@ -1,5 +1,5 @@
-use parser_lib;
+use leveldb_parser_lib::log_parser;
 
 fn main() {
-    parser_lib::hello_from_log();
+    log_parser::parse_file("./_/000003.log").unwrap();
 }

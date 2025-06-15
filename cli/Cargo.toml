@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-parser-lib = { path = "../parser-lib" }
+leveldb-parser-lib = { path = "../leveldb-parser-lib" }
