@@ -14,7 +14,6 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
     let mut block_counter = 1;
     while reader.stream_position()? < file_size {
         let block = read_block(&mut reader)?;
-
         print_block(&block, block_counter)?;
 
         block_counter += 1;
@@ -127,10 +126,11 @@ fn print_block(block: &Block, block_counter: u64) -> io::Result<()> {
                 }
             }
         }
-    } // TODO: implement other block types (3 and 4)
-
-    // println!("-------------------- Data --------------------");
-    // println!("Block Data: {:02X?}", block.data);
+    } else if block.block_type == 3 || block.block_type == 4 {
+        println!("------------------- Value --------------------");
+        println!("{:02X?}", block.data);
+        println!("ASCII: {}", bytes_to_ascii(&block.data));
+    }
 
     Ok(())
 }
@@ -171,7 +171,13 @@ fn read_varint32_record(reader: &mut (impl Read + Seek)) -> io::Result<Vec<u8>> 
     let record_len = utils::decode_varint32(&varint_bytes) as usize;
 
     let mut record_data = vec![0; record_len];
-    reader.read_exact(&mut record_data)?;
+
+    let bytes_read = reader.read(&mut record_data)?;
+
+    // if partial data block (record type 2)
+    if bytes_read < record_len {
+        record_data.truncate(bytes_read);
+    }
 
     Ok(record_data)
 }
