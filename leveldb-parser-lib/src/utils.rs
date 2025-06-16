@@ -10,9 +10,8 @@ pub fn decode_varint32(bytes: &[u8]) -> u32 {
 
     for &byte in bytes {
         result |= ((byte & 0x7F) as u32) << shift;
-        // break if continuation bit is not set
         if byte & 0x80 == 0 {
-            break;
+            break; // break if continuation bit is not set
         }
         shift += 7;
         if shift >= 32 {
@@ -28,9 +27,8 @@ pub fn decode_varint64(bytes: &[u8]) -> u64 {
 
     for &byte in bytes {
         result |= ((byte & 0x7F) as u64) << shift;
-        // break if continuation bit is not set
         if byte & 0x80 == 0 {
-            break;
+            break; // break if continuation bit is not set
         }
         shift += 7;
         if shift >= 64 {
