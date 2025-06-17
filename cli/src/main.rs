@@ -1,5 +1,5 @@
-use leveldb_parser_lib::manifest_parser;
 // use leveldb_parser_lib::log_parser;
+use leveldb_parser_lib::manifest_parser;
 
 fn main() {
     manifest_parser::parse_file("./_/MANIFEST-000017").unwrap();

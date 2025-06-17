@@ -81,15 +81,15 @@ pub fn print_block_header(block: &Block, block_counter: u64) -> io::Result<()> {
         println!("CRC32C: {:02X} (verification failed!)", block.crc);
     }
 
-    println!("Data Length: {} Bytes", block.data_len);
+    println!("Data-Length: {} Bytes", block.data_len);
 
     match block.block_type {
-        0 => println!("Record Type: Zero (0)"),
-        1 => println!("Record Type: Full (1)"),
-        2 => println!("Record Type: First (2)"),
-        3 => println!("Record Type: Middle (3)"),
-        4 => println!("Record Type: Last (4)"),
-        _ => println!("Record Type: Unknown ({})", block.block_type),
+        0 => println!("Record-Type: 0 (Zero)"),
+        1 => println!("Record-Type: 1 (Full)"),
+        2 => println!("Record-Type: 2 (First)"),
+        3 => println!("Record-Type: 3 (Middle)"),
+        4 => println!("Record-Type: 4 (Last)"),
+        _ => println!("Record-Type: {} (Unknown)", block.block_type),
     }
 
     Ok(())
@@ -101,15 +101,15 @@ fn print_block_data(block: &Block) -> io::Result<()> {
         println!("---------------- Batch Header ----------------");
 
         let batch_header = read_batch_header(&mut cursor)?;
-        println!("Sequence Number: {}", batch_header.seq_no);
-        println!("Number of Records: {}", batch_header.num_records);
+        println!("Sequence-No.: {}", batch_header.seq_no);
+        println!("Records-No.: {}", batch_header.num_records);
 
         println!("---------------- Record State ----------------");
         let record_state = cursor.read_u8()?;
         match record_state {
-            0 => println!("Deleted (0)"),
-            1 => println!("Live (1)"),
-            _ => println!("Unknown ({})", record_state),
+            0 => println!("0 (Deleted)"),
+            1 => println!("1 (Live)"),
+            _ => println!("{} (Unknown)", record_state),
         }
 
         for _ in 0..batch_header.num_records {

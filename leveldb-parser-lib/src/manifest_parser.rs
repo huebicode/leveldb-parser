@@ -32,13 +32,34 @@ fn print_block(block: &log_parser::Block, block_counter: u64) -> io::Result<()> 
         match tag {
             0x01 => {
                 let value = utils::read_varint_slice(&mut cursor)?;
-                println!("Comparator (1): {}", utils::bytes_to_ascii(&value));
+                println!("[1] Comparator: {}", utils::bytes_to_ascii(&value));
             }
-            // 0x02 => "LogNumber",
-            // 0x03 => "NextFileNumber",
-            // 0x04 => "LastSequenceNumber",
-            // 0x05 => "CompactPointer",
-            // 0x06 => "DeletedFile",
+            0x02 => {
+                let log_no = utils::read_varint(&mut cursor)?;
+                println!("[2] LogNumber: {}", log_no);
+            }
+            0x03 => {
+                let next_file_no = utils::read_varint(&mut cursor)?;
+                println!("[3] NextFileNumber: {}", next_file_no);
+            }
+            0x04 => {
+                let last_seq_no = utils::read_varint(&mut cursor)?;
+                println!("[4] LastSeq: {}", last_seq_no);
+            }
+            0x05 => {
+                let level = utils::read_varint(&mut cursor)?;
+                let compact_pointer = utils::read_varint_slice(&mut cursor)?;
+                println!(
+                    "[5] CompactPointer: Level: {}, Pointer: {}",
+                    level,
+                    utils::bytes_to_ascii(&compact_pointer)
+                );
+            }
+            0x06 => {
+                let level = utils::read_varint(&mut cursor)?;
+                let file_no = utils::read_varint(&mut cursor)?;
+                println!("[6] DeletedFile: Level: {}, No.: {}", level, file_no);
+            }
             0x07 => {
                 let level = utils::read_varint(&mut cursor)?;
                 let file_no = utils::read_varint(&mut cursor)?;
@@ -51,7 +72,7 @@ fn print_block(block: &log_parser::Block, block_counter: u64) -> io::Result<()> 
                 let (lg_key, lg_stat, lg_seq) = utils::decode_key(&largest_key)?;
 
                 println!(
-                    "AddFile (7): Level: {}, File-No.: {}, File-Size: {}, Key-Range: {}@{}:{} .. {}@{}:{}",
+                    "[7] AddFile: Level: {}, No.: {}, Size: {} Bytes, Key-Range: {}@{}:{} .. {}@{}:{}",
                     level,
                     file_no,
                     file_size,
@@ -63,14 +84,13 @@ fn print_block(block: &log_parser::Block, block_counter: u64) -> io::Result<()> 
                     lg_stat
                 );
             }
-            // 0x09 => "PrevLogNumber",
+            0x09 => {
+                let prev_log_no = utils::read_varint(&mut cursor)?;
+                println!("[9] PrevLogNumber: {}", prev_log_no);
+            }
             _ => println!("Unknown tag: {:02X}", tag),
         };
     }
-
-    // println!("------------------- Value --------------------");
-    // println!("{:02X?}", block.data);
-    // println!("ASCII: {}", utils::bytes_to_ascii(&block.data));
 
     Ok(())
 }
