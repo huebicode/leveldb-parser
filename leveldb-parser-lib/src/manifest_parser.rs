@@ -48,17 +48,21 @@ fn print_block(block: &log_parser::Block, block_counter: u64) -> io::Result<()> 
             }
             0x05 => {
                 let level = utils::read_varint(&mut cursor)?;
-                let compact_pointer = utils::read_varint_slice(&mut cursor)?;
+                let pointer_key = utils::read_varint_slice(&mut cursor)?;
+                let (key, stat, seq) = utils::decode_key(&pointer_key)?;
+
                 println!(
-                    "[5] CompactPointer: Level: {}, Pointer: {}",
+                    "[5] CompactPointer: Level: {}, Key: {} @ {} : {}",
                     level,
-                    utils::bytes_to_ascii(&compact_pointer)
+                    utils::bytes_to_ascii(&key),
+                    seq,
+                    stat
                 );
             }
             0x06 => {
                 let level = utils::read_varint(&mut cursor)?;
                 let file_no = utils::read_varint(&mut cursor)?;
-                println!("[6] DeletedFile: Level: {}, No.: {}", level, file_no);
+                println!("[6] RemoveFile: Level: {}, No.: {}", level, file_no);
             }
             0x07 => {
                 let level = utils::read_varint(&mut cursor)?;
@@ -72,7 +76,7 @@ fn print_block(block: &log_parser::Block, block_counter: u64) -> io::Result<()> 
                 let (lg_key, lg_stat, lg_seq) = utils::decode_key(&largest_key)?;
 
                 println!(
-                    "[7] AddFile: Level: {}, No.: {}, Size: {} Bytes, Key-Range: {}@{}:{} .. {}@{}:{}",
+                    "[7] AddFile: Level: {}, No.: {}, Size: {} Bytes, Key-Range: {} @ {} : {} .. {} @ {} : {}",
                     level,
                     file_no,
                     file_size,
