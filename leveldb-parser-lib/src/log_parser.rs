@@ -23,14 +23,14 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
 
 // -----------------------------------------------------------------------------
 
-struct Block {
-    crc: u32,
-    data_len: u16,
-    block_type: u8,
-    data: Vec<u8>,
+pub struct Block {
+    pub crc: u32,
+    pub data_len: u16,
+    pub block_type: u8,
+    pub data: Vec<u8>,
 }
 
-fn read_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
+pub fn read_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
     let crc = reader.read_u32::<LittleEndian>()?;
     let data_len = reader.read_u16::<LittleEndian>()?;
     let block_type = reader.read_u8()?;
@@ -62,6 +62,12 @@ fn read_batch_header(reader: &mut (impl Read + Seek)) -> io::Result<BatchHeader>
 }
 
 fn print_block(block: &Block, block_counter: u64) -> io::Result<()> {
+    print_block_header(block, block_counter)?;
+    print_block_data(block)?;
+    Ok(())
+}
+
+pub fn print_block_header(block: &Block, block_counter: u64) -> io::Result<()> {
     println!(
         "\n################ [ Block {} ] #################",
         block_counter
@@ -86,6 +92,10 @@ fn print_block(block: &Block, block_counter: u64) -> io::Result<()> {
         _ => println!("Record Type: Unknown ({})", block.block_type),
     }
 
+    Ok(())
+}
+
+fn print_block_data(block: &Block) -> io::Result<()> {
     let mut cursor = Cursor::new(&block.data);
     if block.block_type == 1 || block.block_type == 2 {
         println!("---------------- Batch Header ----------------");
@@ -106,20 +116,20 @@ fn print_block(block: &Block, block_counter: u64) -> io::Result<()> {
             match record_state {
                 0 => {
                     println!("-------------------- Key ---------------------");
-                    let key = read_varint32_record(&mut cursor)?;
+                    let key = utils::read_varint_slice(&mut cursor)?;
                     println!("{:02X?}", key);
-                    println!("ASCII: {}", bytes_to_ascii(&key));
+                    println!("ASCII: {}", utils::bytes_to_ascii(&key));
                 }
                 1 => {
                     println!("-------------------- Key ---------------------");
-                    let key = read_varint32_record(&mut cursor)?;
+                    let key = utils::read_varint_slice(&mut cursor)?;
                     println!("{:02X?}", key);
-                    println!("ASCII: {}", bytes_to_ascii(&key));
+                    println!("ASCII: {}", utils::bytes_to_ascii(&key));
 
                     println!("------------------- Value --------------------");
-                    let value = read_varint32_record(&mut cursor)?;
+                    let value = utils::read_varint_slice(&mut cursor)?;
                     println!("{:02X?}", value);
-                    println!("ASCII: {}", bytes_to_ascii(&value));
+                    println!("ASCII: {}", utils::bytes_to_ascii(&value));
                 }
                 _ => {
                     println!("Unknown record state...");
@@ -129,7 +139,7 @@ fn print_block(block: &Block, block_counter: u64) -> io::Result<()> {
     } else if block.block_type == 3 || block.block_type == 4 {
         println!("------------------- Value --------------------");
         println!("{:02X?}", block.data);
-        println!("ASCII: {}", bytes_to_ascii(&block.data));
+        println!("ASCII: {}", utils::bytes_to_ascii(&block.data));
     }
 
     Ok(())
@@ -146,45 +156,4 @@ fn crc_verified(block: &Block) -> bool {
     let unmasked_crc = utils::unmask_crc32c(block.crc);
 
     calculated_crc == unmasked_crc
-}
-
-fn read_varint32_record(reader: &mut (impl Read + Seek)) -> io::Result<Vec<u8>> {
-    let mut varint_bytes = Vec::new();
-    let mut buf = [0; 1];
-
-    loop {
-        reader.read_exact(&mut buf)?;
-        varint_bytes.push(buf[0]);
-
-        if buf[0] & 0x80 == 0 {
-            break; // break if the continuation bit is not set
-        }
-
-        if varint_bytes.len() >= 5 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Varint32 overflow",
-            ));
-        }
-    }
-
-    let record_len = utils::decode_varint32(&varint_bytes) as usize;
-
-    let mut record_data = vec![0; record_len];
-
-    let bytes_read = reader.read(&mut record_data)?;
-
-    // if partial data block (record type 2)
-    if bytes_read < record_len {
-        record_data.truncate(bytes_read);
-    }
-
-    Ok(record_data)
-}
-
-fn bytes_to_ascii(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .map(|&b| if b.is_ascii() { b as char } else { '.' })
-        .collect()
 }
