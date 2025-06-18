@@ -20,7 +20,7 @@ The goal is to explore and understand the internal structure of LevelDB and impl
 ## Planned Features
 
 - [x] parse `.log` files
-- [ ] parse `MANIFEST` files
+- [x] parse `MANIFEST` files
 - [ ] parse `.ldb` files
 - [ ] implement GUI with Tauri
 

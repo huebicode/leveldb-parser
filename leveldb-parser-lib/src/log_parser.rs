@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::{self, BufReader, Cursor, Read, Seek};
 
 use byteorder::{LittleEndian, ReadBytesExt};
-use crc32c::crc32c;
 
 use crate::utils;
 
@@ -75,7 +74,7 @@ pub fn print_block_header(block: &Block, block_counter: u64) -> io::Result<()> {
 
     println!("------------------- Header -------------------");
 
-    if crc_verified(block) {
+    if utils::crc_verified(block.crc, &block.data, block.block_type, false) {
         println!("CRC32C: {:02X} (verified)", block.crc);
     } else {
         println!("CRC32C: {:02X} (verification failed!)", block.crc);
@@ -143,17 +142,4 @@ fn print_block_data(block: &Block) -> io::Result<()> {
     }
 
     Ok(())
-}
-
-// helper ----------------------------------------------------------------------
-
-fn crc_verified(block: &Block) -> bool {
-    let mut buf = Vec::with_capacity(1 + block.data.len());
-    buf.push(block.block_type);
-    buf.extend_from_slice(&block.data);
-
-    let calculated_crc = crc32c(&buf);
-    let unmasked_crc = utils::unmask_crc32c(block.crc);
-
-    calculated_crc == unmasked_crc
 }

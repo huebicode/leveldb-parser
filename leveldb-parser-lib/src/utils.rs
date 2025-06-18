@@ -1,9 +1,28 @@
+use crc32c::crc32c;
 use std::io::{self, Read, Seek};
 
 const MASK_DELTA: u32 = 0xa282ead8;
 pub fn unmask_crc32c(masked_crc: u32) -> u32 {
     let rot = masked_crc.wrapping_sub(MASK_DELTA);
     rot.rotate_left(15)
+}
+
+pub fn crc_verified(crc: u32, data_slice: &[u8], type_byte: u8, ldb_file_flag: bool) -> bool {
+    let mut buf = Vec::with_capacity(data_slice.len() + 1);
+
+    if ldb_file_flag {
+        buf.extend_from_slice(&data_slice);
+        buf.push(type_byte);
+    } else {
+        // log file
+        buf.push(type_byte);
+        buf.extend_from_slice(&data_slice);
+    }
+
+    let calculated_crc = crc32c(&buf);
+    let unmasked_crc = unmask_crc32c(crc);
+
+    calculated_crc == unmasked_crc
 }
 
 pub fn bytes_to_ascii(bytes: &[u8]) -> String {
