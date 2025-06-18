@@ -11,12 +11,12 @@ pub fn crc_verified(crc: u32, data_slice: &[u8], type_byte: u8, ldb_file_flag: b
     let mut buf = Vec::with_capacity(data_slice.len() + 1);
 
     if ldb_file_flag {
-        buf.extend_from_slice(&data_slice);
+        buf.extend_from_slice(data_slice);
         buf.push(type_byte);
     } else {
         // log file
         buf.push(type_byte);
-        buf.extend_from_slice(&data_slice);
+        buf.extend_from_slice(data_slice);
     }
 
     let calculated_crc = crc32c(&buf);
