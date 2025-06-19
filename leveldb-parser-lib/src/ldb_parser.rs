@@ -1,6 +1,5 @@
 use std::fs::File;
 use std::io::{self, BufReader, Cursor, Read, Seek};
-use std::{array, vec};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
@@ -18,7 +17,7 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
         meta_idx_blk_hndl.offset,
         meta_idx_blk_hndl.size,
     )?;
-    let kv = read_block_data(&meta_idx_blk.data)?;
+    let kv = read_block_data_kvs(&meta_idx_blk.data)?;
 
     for (idx, pair) in kv.iter().enumerate() {
         println!("################# Meta Block {} ################", idx + 1);
@@ -37,9 +36,37 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
         }
     }
 
-    // println!("################ Index Block #################");
-    // let idx_blk = read_raw_block(&mut reader, idx_blk_hndl.offset, idx_blk_hndl.size)?;
-    // let kv = read_block_data(&idx_blk.data)?;
+    println!("################ Index Block #################");
+    let idx_blk = read_raw_block(&mut reader, idx_blk_hndl.offset, idx_blk_hndl.size)?;
+    let kv = read_block_data_kvs(&idx_blk.data)?;
+
+    for (idx, pair) in kv.iter().enumerate() {
+        println!("################# Data Block {} ################", idx + 1);
+
+        let data_blk_hndl = parse_block_handle(&pair.value)?;
+        println!(
+            "DataBlock-Handle: offset: {:?}, size: {:?}",
+            data_blk_hndl.offset, data_blk_hndl.size
+        );
+
+        let data_blk = read_raw_block(&mut reader, data_blk_hndl.offset, data_blk_hndl.size)?;
+
+        let kv = read_block_data_kvs(&data_blk.data)?;
+        for pair in kv.iter() {
+            let (key, stat, seq) = utils::decode_key(&pair.key)?;
+            println!(
+                "Sequence: {}, Status: {}, Key: {}, Val: {}",
+                seq,
+                match stat {
+                    1 => "1 (Live)",
+                    2 => "2 (Deleted)",
+                    _ => "Unknown",
+                },
+                utils::bytes_to_ascii(&key),
+                utils::bytes_to_ascii(&pair.value)
+            );
+        }
+    }
 
     Ok(())
 }
@@ -88,8 +115,8 @@ fn read_footer(reader: &mut (impl Read + Seek)) -> io::Result<(BlockHandle, Bloc
 
 struct RawBlock {
     data: Vec<u8>,
-    compression_type: u8,
-    crc: u32,
+    _compression_type: u8,
+    _crc: u32,
 }
 
 fn read_raw_block(reader: &mut (impl Read + Seek), offset: u64, size: u64) -> io::Result<RawBlock> {
@@ -103,11 +130,7 @@ fn read_raw_block(reader: &mut (impl Read + Seek), offset: u64, size: u64) -> io
     let compression_type = reader.read_u8()?;
     match compression_type {
         0x0 => println!("Compression-Type: 0 (NoCompression)"),
-        0x1 => {
-            let decompressed = snap::raw::Decoder::new().decompress_vec(&data)?;
-            data = decompressed;
-            println!("Compression-Type: 1 (Snappy)")
-        }
+        0x1 => println!("Compression-Type: 1 (Snappy)"),
         0x2 => println!("Compression-Type: 2 (Zstd)"),
         _ => println!("Compression-Type: {} (Unknown)", compression_type),
     }
@@ -120,14 +143,24 @@ fn read_raw_block(reader: &mut (impl Read + Seek), offset: u64, size: u64) -> io
         println!("CRC32C: {:02X} (verification failed!)", crc);
     }
 
+    // decompress data after crc-check
+    if compression_type == 0x1 {
+        let decompressed = snap::raw::Decoder::new().decompress_vec(&data)?;
+        data = decompressed;
+    } else if compression_type == 0x2 {
+        // NOTE: not tested yet
+        let decompressed = zstd::decode_all(data.as_slice())?;
+        data = decompressed;
+    }
+
     Ok(RawBlock {
         data,
-        compression_type,
-        crc,
+        _compression_type: compression_type,
+        _crc: crc,
     })
 }
 
-fn read_block_data(data: &[u8]) -> io::Result<Vec<KeyValPair>> {
+fn read_block_data_kvs(data: &[u8]) -> io::Result<Vec<KeyValPair>> {
     println!("----------------- Block Data -----------------");
     let mut cursor = Cursor::new(data);
 
