@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::{self, BufReader, Cursor, Read, Seek};
-use std::vec;
+use std::{array, vec};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
@@ -10,14 +10,36 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
     let file = File::open(file_path)?;
     let mut reader = BufReader::new(file);
 
-    let (meta_blk_hndl, idx_blk_hndl) = read_footer(&mut reader)?;
+    let (meta_idx_blk_hndl, idx_blk_hndl) = read_footer(&mut reader)?;
 
     println!("############## Meta Index Block ##############");
-    let meta_idx_blk = read_raw_block(&mut reader, meta_blk_hndl.offset, meta_blk_hndl.size)?;
-    read_block_data(&meta_idx_blk.data, &mut reader)?;
+    let meta_idx_blk = read_raw_block(
+        &mut reader,
+        meta_idx_blk_hndl.offset,
+        meta_idx_blk_hndl.size,
+    )?;
+    let kv = read_block_data(&meta_idx_blk.data)?;
+
+    for (idx, pair) in kv.iter().enumerate() {
+        println!("################# Meta Block {} ################", idx + 1);
+        println!("Name: {}", utils::bytes_to_ascii(&pair.key));
+
+        let meta_blk_hndl = parse_block_handle(&pair.value)?;
+        println!(
+            "MetaBlock-Handle: offset: {:?}, size: {:?}",
+            meta_blk_hndl.offset, meta_blk_hndl.size
+        );
+
+        let meta_blk = read_raw_block(&mut reader, meta_blk_hndl.offset, meta_blk_hndl.size)?;
+
+        if utils::bytes_to_ascii(&pair.key) == "filter.leveldb.BuiltinBloomFilter2" {
+            parse_bloom_filter_block(&meta_blk.data)?;
+        }
+    }
 
     // println!("################ Index Block #################");
     // let idx_blk = read_raw_block(&mut reader, idx_blk_hndl.offset, idx_blk_hndl.size)?;
+    // let kv = read_block_data(&idx_blk.data)?;
 
     Ok(())
 }
@@ -36,7 +58,7 @@ fn read_footer(reader: &mut (impl Read + Seek)) -> io::Result<(BlockHandle, Bloc
         size: utils::read_varint(reader)?,
     };
     println!(
-        "MetaBlock-Handle: offset: {:?}, size: {:?}",
+        "MetaIndexBlock-Handle: offset: {:?}, size: {:?}",
         meta_blk_hndl.offset, meta_blk_hndl.size
     );
 
@@ -105,7 +127,7 @@ fn read_raw_block(reader: &mut (impl Read + Seek), offset: u64, size: u64) -> io
     })
 }
 
-fn read_block_data(data: &[u8], reader: &mut (impl Read + Seek)) -> io::Result<Vec<KeyValPair>> {
+fn read_block_data(data: &[u8]) -> io::Result<Vec<KeyValPair>> {
     println!("----------------- Block Data -----------------");
     let mut cursor = Cursor::new(data);
 
@@ -170,4 +192,29 @@ fn read_block_entry(cursor: &mut Cursor<&[u8]>, prev_key: &[u8]) -> io::Result<K
     println!("Value: {:02X?}", value);
 
     Ok(KeyValPair { key, value })
+}
+
+fn parse_bloom_filter_block(data: &[u8]) -> io::Result<()> {
+    println!("------------- Bloom Filter Block -------------");
+    let mut cursor = Cursor::new(data);
+
+    cursor.seek(io::SeekFrom::End(-5))?;
+    let array_offset = cursor.read_u32::<LittleEndian>()?;
+    let base_log = cursor.read_u8()?;
+    let filter_data = &data[0..array_offset as usize];
+
+    println!("Filter Data: {:02X?}", filter_data);
+    println!("Array Offset: {}", array_offset);
+    println!("Base Log: {}", base_log);
+
+    Ok(())
+}
+
+// helper ----------------------------------------------------------------------
+
+fn parse_block_handle(data: &[u8]) -> io::Result<BlockHandle> {
+    let mut cursor = Cursor::new(data);
+    let offset = utils::read_varint(&mut cursor)?;
+    let size = utils::read_varint(&mut cursor)?;
+    Ok(BlockHandle { offset, size })
 }
