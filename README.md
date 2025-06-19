@@ -17,12 +17,12 @@ The goal is to explore and understand the internal structure of LevelDB and impl
 **Work in progress!** – I’m curretly at the beginning of the implementation phase. So this repository will be continuously updated and changed as the thesis progresses.
 
 
-## Planned Features
+## Features
 
 - [x] parse `.log` files
 - [x] parse `MANIFEST` files
-- [ ] parse `.ldb` files
-- [ ] implement GUI with Tauri
+- [x] parse `.ldb` files
+- [ ] GUI with Tauri
 
 
 ## Thesis Info
