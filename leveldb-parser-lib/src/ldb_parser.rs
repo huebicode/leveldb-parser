@@ -21,7 +21,7 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
 
     for (idx, pair) in kv.iter().enumerate() {
         println!("################# Meta Block {} ################", idx + 1);
-        println!("Name: {}", utils::bytes_to_ascii(&pair.key));
+        println!("Name: {}", utils::bytes_to_ascii_with_hex(&pair.key));
 
         let meta_blk_hndl = parse_block_handle(&pair.value)?;
         println!(
@@ -31,7 +31,7 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
 
         let meta_blk = read_raw_block(&mut reader, meta_blk_hndl.offset, meta_blk_hndl.size)?;
 
-        if utils::bytes_to_ascii(&pair.key) == "filter.leveldb.BuiltinBloomFilter2" {
+        if utils::bytes_to_ascii_with_hex(&pair.key) == "filter.leveldb.BuiltinBloomFilter2" {
             parse_bloom_filter_block(&meta_blk.data)?;
         }
     }
@@ -62,8 +62,8 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
                     2 => "2 (Deleted)",
                     _ => "Unknown",
                 },
-                utils::bytes_to_ascii(&key),
-                utils::bytes_to_ascii(&pair.value)
+                utils::bytes_to_ascii_with_hex(&key),
+                utils::bytes_to_ascii_with_hex(&pair.value)
             );
         }
     }

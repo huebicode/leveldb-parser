@@ -100,45 +100,37 @@ fn print_block_data(block: &Block) -> io::Result<()> {
         println!("---------------- Batch Header ----------------");
 
         let batch_header = read_batch_header(&mut cursor)?;
-        println!("Sequence-No.: {}", batch_header.seq_no);
-        println!("Records-No.: {}", batch_header.num_records);
+        println!("Sequence: {}", batch_header.seq_no);
+        println!("Records: {}", batch_header.num_records);
 
-        println!("---------------- Record State ----------------");
-        let record_state = cursor.read_u8()?;
-        match record_state {
-            0 => println!("0 (Deleted)"),
-            1 => println!("1 (Live)"),
-            _ => println!("{} (Unknown)", record_state),
-        }
-
-        for _ in 0..batch_header.num_records {
+        for i in 0..batch_header.num_records {
+            let record_state = cursor.read_u8()?;
             match record_state {
                 0 => {
+                    println!("\n******* Record {} (State: 0 [Deleted]) ********", i + 1);
                     println!("-------------------- Key ---------------------");
                     let key = utils::read_varint_slice(&mut cursor)?;
-                    println!("{:02X?}", key);
-                    println!("ASCII: {}", utils::bytes_to_ascii(&key));
+                    println!("{}", utils::bytes_to_ascii_with_hex(&key));
                 }
                 1 => {
+                    println!("\n********* Record {} (State: 1 [Live]) *********", i + 1);
                     println!("-------------------- Key ---------------------");
                     let key = utils::read_varint_slice(&mut cursor)?;
-                    println!("{:02X?}", key);
-                    println!("ASCII: {}", utils::bytes_to_ascii(&key));
+                    println!("{}", utils::bytes_to_ascii_with_hex(&key));
 
                     println!("------------------- Value --------------------");
                     let value = utils::read_varint_slice(&mut cursor)?;
-                    println!("{:02X?}", value);
-                    println!("ASCII: {}", utils::bytes_to_ascii(&value));
+                    println!("{}", utils::bytes_to_ascii_with_hex(&value));
                 }
                 _ => {
-                    println!("Unknown record state...");
+                    println!("\n*********** Unknown Record State *************");
                 }
             }
         }
     } else if block.block_type == 3 || block.block_type == 4 {
         println!("------------------- Value --------------------");
         println!("{:02X?}", block.data);
-        println!("ASCII: {}", utils::bytes_to_ascii(&block.data));
+        println!("ASCII: {}", utils::bytes_to_ascii_with_hex(&block.data));
     }
 
     Ok(())

@@ -32,7 +32,7 @@ fn print_block(block: &log_parser::Block, block_counter: u64) -> io::Result<()> 
         match tag {
             0x01 => {
                 let value = utils::read_varint_slice(&mut cursor)?;
-                println!("[1] Comparator: {}", utils::bytes_to_ascii(&value));
+                println!("[1] Comparator: {}", utils::bytes_to_ascii_with_hex(&value));
             }
             0x02 => {
                 let log_no = utils::read_varint(&mut cursor)?;
@@ -54,7 +54,7 @@ fn print_block(block: &log_parser::Block, block_counter: u64) -> io::Result<()> 
                 println!(
                     "[5] CompactPointer: Level: {}, Key: {} @ {} : {}",
                     level,
-                    utils::bytes_to_ascii(&key),
+                    utils::bytes_to_ascii_with_hex(&key),
                     seq,
                     stat
                 );
@@ -80,10 +80,10 @@ fn print_block(block: &log_parser::Block, block_counter: u64) -> io::Result<()> 
                     level,
                     file_no,
                     file_size,
-                    utils::bytes_to_ascii(&sm_key),
+                    utils::bytes_to_ascii_with_hex(&sm_key),
                     sm_seq,
                     sm_stat,
-                    utils::bytes_to_ascii(&lg_key),
+                    utils::bytes_to_ascii_with_hex(&lg_key),
                     lg_seq,
                     lg_stat
                 );
