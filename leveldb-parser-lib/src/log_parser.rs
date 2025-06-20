@@ -23,6 +23,7 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
 // -----------------------------------------------------------------------------
 
 pub struct Block {
+    pub offset: u64,
     pub crc: u32,
     pub data_len: u16,
     pub block_type: u8,
@@ -30,6 +31,8 @@ pub struct Block {
 }
 
 pub fn read_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
+    let offset = reader.stream_position()?;
+
     let crc = reader.read_u32::<LittleEndian>()?;
     let data_len = reader.read_u16::<LittleEndian>()?;
     let block_type = reader.read_u8()?;
@@ -38,6 +41,7 @@ pub fn read_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
     reader.read_exact(&mut data)?;
 
     Ok(Block {
+        offset,
         crc,
         data_len,
         block_type,
@@ -68,12 +72,11 @@ fn print_block(block: &Block, block_counter: u64) -> io::Result<()> {
 
 pub fn print_block_header(block: &Block, block_counter: u64) -> io::Result<()> {
     println!(
-        "\n################ [ Block {} ] #################",
-        block_counter
+        "\n########## [ Block {} (Offset: {})] ############",
+        block_counter, block.offset
     );
 
     println!("------------------- Header -------------------");
-
     if utils::crc_verified(block.crc, &block.data, block.block_type, false) {
         println!("CRC32C: {:02X} (verified)", block.crc);
     } else {
@@ -105,32 +108,32 @@ fn print_block_data(block: &Block) -> io::Result<()> {
 
         for i in 0..batch_header.num_records {
             let record_state = cursor.read_u8()?;
-            match record_state {
-                0 => {
-                    println!("\n******* Record {} (State: 0 [Deleted]) ********", i + 1);
-                    println!("-------------------- Key ---------------------");
-                    let key = utils::read_varint_slice(&mut cursor)?;
-                    println!("{}", utils::bytes_to_ascii_with_hex(&key));
-                }
-                1 => {
-                    println!("\n********* Record {} (State: 1 [Live]) *********", i + 1);
-                    println!("-------------------- Key ---------------------");
-                    let key = utils::read_varint_slice(&mut cursor)?;
-                    println!("{}", utils::bytes_to_ascii_with_hex(&key));
 
-                    println!("------------------- Value --------------------");
-                    let value = utils::read_varint_slice(&mut cursor)?;
-                    println!("{}", utils::bytes_to_ascii_with_hex(&value));
-                }
-                _ => {
-                    println!("\n*********** Unknown Record State *************");
-                }
+            match record_state {
+                0 => println!("\n******* Record {} (State: 0 [Deleted]) ********", i + 1),
+                1 => println!("\n********* Record {} (State: 1 [Live]) *********", i + 1),
+                _ => println!("\n*********** Unknown Record State *************"),
+            }
+
+            // calc key offset from block start + header + cursor position
+            let key_offset = block.offset + 7 + cursor.position();
+
+            println!(
+                "-------------- Key (Offset: {}) ---------------",
+                key_offset
+            );
+            let key = utils::read_varint_slice(&mut cursor)?;
+            println!("{}", utils::bytes_to_ascii_with_hex(&key));
+
+            if record_state != 0 {
+                println!("------------------- Value --------------------");
+                let value = utils::read_varint_slice(&mut cursor)?;
+                println!("{}", utils::bytes_to_ascii_with_hex(&value));
             }
         }
     } else if block.block_type == 3 || block.block_type == 4 {
         println!("------------------- Value --------------------");
-        println!("{:02X?}", block.data);
-        println!("ASCII: {}", utils::bytes_to_ascii_with_hex(&block.data));
+        println!("{}", utils::bytes_to_ascii_with_hex(&block.data));
     }
 
     Ok(())
