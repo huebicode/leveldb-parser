@@ -76,7 +76,7 @@ fn print_block(block: &log_parser::Block, block_counter: u64) -> io::Result<()> 
                 let (lg_key, lg_stat, lg_seq) = utils::decode_key(&largest_key)?;
 
                 println!(
-                    "[7] AddFile: Level: {}, No.: {}, Size: {} Bytes, Key-Range: {} @ {} : {} .. {} @ {} : {}",
+                    "[7] AddFile: Level: {}, No.: {}, Size: {} Bytes, Key-Range: '{}' @ {} : {} .. '{}' @ {} : {}",
                     level,
                     file_no,
                     file_size,
