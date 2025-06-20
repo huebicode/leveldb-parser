@@ -118,16 +118,20 @@ fn print_block_data(block: &Block) -> io::Result<()> {
             // calc key offset from block start + header + cursor position
             let key_offset = block.offset + 7 + cursor.position();
 
-            println!(
-                "-------------- Key (Offset: {}) ---------------",
-                key_offset
-            );
             let key = utils::read_varint_slice(&mut cursor)?;
+            println!(
+                "--------- Key (Offset: {}, Length: {}) ---------",
+                key_offset,
+                key.len()
+            );
             println!("{}", utils::bytes_to_ascii_with_hex(&key));
 
             if record_state != 0 {
-                println!("------------------- Value --------------------");
                 let value = utils::read_varint_slice(&mut cursor)?;
+                println!(
+                    "------------- Value (Length: {}) --------------",
+                    value.len()
+                );
                 println!("{}", utils::bytes_to_ascii_with_hex(&value));
             }
         }
