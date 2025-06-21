@@ -11,7 +11,7 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
 
     let (meta_idx_blk_hndl, idx_blk_hndl) = read_footer(&mut reader)?;
 
-    println!("############## Meta Index Block ##############");
+    println!("\n############## Meta Index Block ##############");
     let meta_idx_blk = read_raw_block(
         &mut reader,
         meta_idx_blk_hndl.offset,
@@ -20,13 +20,13 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
     let kv = read_block_data_kvs(&meta_idx_blk.data)?;
 
     for (idx, pair) in kv.iter().enumerate() {
-        println!("################# Meta Block {} ################", idx + 1);
-        println!("Name: {}", utils::bytes_to_ascii_with_hex(&pair.key));
+        print_record_kv(pair, idx, BlockType::MetaIndex)?;
 
         let meta_blk_hndl = parse_block_handle(&pair.value)?;
         println!(
-            "MetaBlock-Handle: offset: {:?}, size: {:?}",
-            meta_blk_hndl.offset, meta_blk_hndl.size
+            "\n########## Meta Block {} (Offset: {}) ###########",
+            idx + 1,
+            meta_blk_hndl.offset,
         );
 
         let meta_blk = read_raw_block(&mut reader, meta_blk_hndl.offset, meta_blk_hndl.size)?;
@@ -36,35 +36,25 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
         }
     }
 
-    println!("################ Index Block #################");
+    println!("\n################ Index Block #################");
     let idx_blk = read_raw_block(&mut reader, idx_blk_hndl.offset, idx_blk_hndl.size)?;
     let kv = read_block_data_kvs(&idx_blk.data)?;
 
     for (idx, pair) in kv.iter().enumerate() {
-        println!("################# Data Block {} ################", idx + 1);
+        print_record_kv(pair, idx, BlockType::Index)?;
 
         let data_blk_hndl = parse_block_handle(&pair.value)?;
         println!(
-            "DataBlock-Handle: offset: {:?}, size: {:?}",
-            data_blk_hndl.offset, data_blk_hndl.size
+            "\n########## Data Block {} (Offset: {}) ##########",
+            idx + 1,
+            data_blk_hndl.offset
         );
 
         let data_blk = read_raw_block(&mut reader, data_blk_hndl.offset, data_blk_hndl.size)?;
 
         let kv = read_block_data_kvs(&data_blk.data)?;
-        for pair in kv.iter() {
-            let (key, stat, seq) = utils::decode_key(&pair.key)?;
-            println!(
-                "Sequence: {}, Status: {}, Key: {}, Val: {}",
-                seq,
-                match stat {
-                    1 => "1 (Live)",
-                    2 => "2 (Deleted)",
-                    _ => "Unknown",
-                },
-                utils::bytes_to_ascii_with_hex(&key),
-                utils::bytes_to_ascii_with_hex(&pair.value)
-            );
+        for (idx, pair) in kv.iter().enumerate() {
+            print_record_kv(pair, idx, BlockType::Data)?;
         }
     }
 
@@ -85,7 +75,7 @@ fn read_footer(reader: &mut (impl Read + Seek)) -> io::Result<(BlockHandle, Bloc
         size: utils::read_varint(reader)?,
     };
     println!(
-        "MetaIndexBlock-Handle: offset: {:?}, size: {:?}",
+        "BlockHandle (Meta Index Block): Offset: {:?}, Size: {:?}",
         meta_blk_hndl.offset, meta_blk_hndl.size
     );
 
@@ -94,7 +84,7 @@ fn read_footer(reader: &mut (impl Read + Seek)) -> io::Result<(BlockHandle, Bloc
         size: utils::read_varint(reader)?,
     };
     println!(
-        "IndexBlock-Handle: offset: {:?}, size: {:?}",
+        "BlockHandle (Index Block): Offset: {:?}, Size: {:?}",
         idx_blk_hndl.offset, idx_blk_hndl.size
     );
 
@@ -129,10 +119,10 @@ fn read_raw_block(reader: &mut (impl Read + Seek), offset: u64, size: u64) -> io
     // compression
     let compression_type = reader.read_u8()?;
     match compression_type {
-        0x0 => println!("Compression-Type: 0 (NoCompression)"),
-        0x1 => println!("Compression-Type: 1 (Snappy)"),
-        0x2 => println!("Compression-Type: 2 (Zstd)"),
-        _ => println!("Compression-Type: {} (Unknown)", compression_type),
+        0x0 => println!("CompressionType: 0 (NoCompression)"),
+        0x1 => println!("CompressionType: 1 (Snappy)"),
+        0x2 => println!("CompressionType: 2 (Zstd)"),
+        _ => println!("CompressionType: {} (Unknown)", compression_type),
     }
 
     // crc
@@ -167,10 +157,11 @@ fn read_block_data_kvs(data: &[u8]) -> io::Result<Vec<KeyValPair>> {
     // restart array
     cursor.seek(io::SeekFrom::End(-4))?;
     let restart_arr_len = cursor.read_u32::<LittleEndian>()?;
-    println!("RestartArray-Count: {}", restart_arr_len);
-
     let restart_array_offset = cursor.seek(io::SeekFrom::End(-4 - (4 * restart_arr_len as i64)))?;
-    println!("RestartArray-Offset: {}", restart_array_offset);
+    println!(
+        "RestartArray (Count: {}, Offset: {})",
+        restart_arr_len, restart_array_offset
+    );
 
     // read block entries
     let mut entries = Vec::new();
@@ -199,7 +190,6 @@ struct KeyValPair {
 }
 
 fn read_block_entry(cursor: &mut Cursor<&[u8]>, prev_key: &[u8]) -> io::Result<KeyValPair> {
-    println!("---------------- Block Entry -----------------");
     let shared_len = utils::read_varint(cursor)? as usize;
     let non_shared_len = utils::read_varint(cursor)? as usize;
     let value_len = utils::read_varint(cursor)? as usize;
@@ -221,14 +211,11 @@ fn read_block_entry(cursor: &mut Cursor<&[u8]>, prev_key: &[u8]) -> io::Result<K
     let mut value = vec![0; value_len];
     cursor.read_exact(&mut value)?;
 
-    println!("Key: {:02X?}", key);
-    println!("Value: {:02X?}", value);
-
     Ok(KeyValPair { key, value })
 }
 
 fn parse_bloom_filter_block(data: &[u8]) -> io::Result<()> {
-    println!("------------- Bloom Filter Block -------------");
+    println!("\n**************** Bloom Filter ****************");
     let mut cursor = Cursor::new(data);
 
     cursor.seek(io::SeekFrom::End(-5))?;
@@ -236,9 +223,9 @@ fn parse_bloom_filter_block(data: &[u8]) -> io::Result<()> {
     let base_log = cursor.read_u8()?;
     let filter_data = &data[0..array_offset as usize];
 
-    println!("Filter Data: {:02X?}", filter_data);
-    println!("Array Offset: {}", array_offset);
-    println!("Base Log: {}", base_log);
+    println!("FilterData: {:02X?}", filter_data);
+    println!("ArrayOffset: {}", array_offset);
+    println!("BaseLog: {}", base_log);
 
     Ok(())
 }
@@ -250,4 +237,52 @@ fn parse_block_handle(data: &[u8]) -> io::Result<BlockHandle> {
     let offset = utils::read_varint(&mut cursor)?;
     let size = utils::read_varint(&mut cursor)?;
     Ok(BlockHandle { offset, size })
+}
+
+enum BlockType {
+    MetaIndex,
+    Index,
+    Data,
+}
+
+fn print_record_kv(pair: &KeyValPair, idx: usize, block_type: BlockType) -> io::Result<()> {
+    match block_type {
+        BlockType::MetaIndex => {
+            println!("\n************ Meta Index Record {} *************", idx + 1);
+            let handle = parse_block_handle(&pair.value)?;
+            println!(
+                "FilterName: {}\nBlockHandle: Offset: {}, Size: {}",
+                utils::bytes_to_ascii_with_hex(&pair.key),
+                handle.offset,
+                handle.size
+            );
+        }
+        BlockType::Index => {
+            println!("\n*************** Index Record {} ***************", idx + 1);
+            let handle = parse_block_handle(&pair.value)?;
+            println!(
+                "SeparatorKey: {}\nBlockHandle: Offset: {}, Size: {}",
+                utils::bytes_to_ascii_with_hex(&pair.key),
+                handle.offset,
+                handle.size
+            );
+        }
+        BlockType::Data => {
+            println!("\n*************** Data Record {} ****************", idx + 1);
+            let (key, stat, seq) = utils::decode_key(&pair.key)?;
+            println!(
+                "Seq: {}, Stat: {}\nKey: '{}'\nVal: '{}'",
+                seq,
+                match stat {
+                    1 => "1 (Live)",
+                    2 => "2 (Deleted)",
+                    _ => "Unknown",
+                },
+                utils::bytes_to_ascii_with_hex(&key),
+                utils::bytes_to_ascii_with_hex(&pair.value)
+            );
+        }
+    }
+
+    Ok(())
 }
