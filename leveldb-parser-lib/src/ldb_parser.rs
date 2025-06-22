@@ -5,6 +5,12 @@ use byteorder::{LittleEndian, ReadBytesExt};
 
 use crate::utils;
 
+enum BlockType {
+    MetaIndex,
+    Index,
+    Data,
+}
+
 pub fn parse_file(file_path: &str) -> io::Result<()> {
     let file = File::open(file_path)?;
     let mut reader = BufReader::new(file);
@@ -20,7 +26,7 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
     let kv = read_block_data_kvs(&meta_idx_blk.data)?;
 
     for (idx, pair) in kv.iter().enumerate() {
-        print_record_kv(pair, idx, BlockType::MetaIndex)?;
+        print_record_kv(pair, idx, BlockType::MetaIndex, meta_idx_blk_hndl.offset)?;
 
         let meta_blk_hndl = parse_block_handle(&pair.value)?;
         println!(
@@ -41,7 +47,7 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
     let kv = read_block_data_kvs(&idx_blk.data)?;
 
     for (idx, pair) in kv.iter().enumerate() {
-        print_record_kv(pair, idx, BlockType::Index)?;
+        print_record_kv(pair, idx, BlockType::Index, idx_blk_hndl.offset)?;
 
         let data_blk_hndl = parse_block_handle(&pair.value)?;
         println!(
@@ -54,7 +60,7 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
 
         let kv = read_block_data_kvs(&data_blk.data)?;
         for (idx, pair) in kv.iter().enumerate() {
-            print_record_kv(pair, idx, BlockType::Data)?;
+            print_record_kv(pair, idx, BlockType::Data, data_blk_hndl.offset)?;
         }
     }
 
@@ -138,7 +144,7 @@ fn read_raw_block(reader: &mut (impl Read + Seek), offset: u64, size: u64) -> io
         let decompressed = snap::raw::Decoder::new().decompress_vec(&data)?;
         data = decompressed;
     } else if compression_type == 0x2 {
-        // NOTE: not tested yet
+        // NOTE: not tested
         let decompressed = zstd::decode_all(data.as_slice())?;
         data = decompressed;
     }
@@ -158,10 +164,7 @@ fn read_block_data_kvs(data: &[u8]) -> io::Result<Vec<KeyValPair>> {
     cursor.seek(io::SeekFrom::End(-4))?;
     let restart_arr_len = cursor.read_u32::<LittleEndian>()?;
     let restart_array_offset = cursor.seek(io::SeekFrom::End(-4 - (4 * restart_arr_len as i64)))?;
-    println!(
-        "RestartArray (Count: {}, Offset: {})",
-        restart_arr_len, restart_array_offset
-    );
+    println!("RestartArray (Count: {})", restart_arr_len);
 
     // read block entries
     let mut entries = Vec::new();
@@ -186,6 +189,7 @@ fn read_block_data_kvs(data: &[u8]) -> io::Result<Vec<KeyValPair>> {
 
 struct KeyValPair {
     key: Vec<u8>,
+    key_offset: u64,
     value: Vec<u8>,
 }
 
@@ -193,6 +197,8 @@ fn read_block_entry(cursor: &mut Cursor<&[u8]>, prev_key: &[u8]) -> io::Result<K
     let shared_len = utils::read_varint(cursor)? as usize;
     let non_shared_len = utils::read_varint(cursor)? as usize;
     let value_len = utils::read_varint(cursor)? as usize;
+
+    let key_offset = cursor.position();
 
     // read inline key
     let mut inline_key = vec![0; non_shared_len];
@@ -211,7 +217,11 @@ fn read_block_entry(cursor: &mut Cursor<&[u8]>, prev_key: &[u8]) -> io::Result<K
     let mut value = vec![0; value_len];
     cursor.read_exact(&mut value)?;
 
-    Ok(KeyValPair { key, value })
+    Ok(KeyValPair {
+        key,
+        key_offset,
+        value,
+    })
 }
 
 fn parse_bloom_filter_block(data: &[u8]) -> io::Result<()> {
@@ -239,13 +249,12 @@ fn parse_block_handle(data: &[u8]) -> io::Result<BlockHandle> {
     Ok(BlockHandle { offset, size })
 }
 
-enum BlockType {
-    MetaIndex,
-    Index,
-    Data,
-}
-
-fn print_record_kv(pair: &KeyValPair, idx: usize, block_type: BlockType) -> io::Result<()> {
+fn print_record_kv(
+    pair: &KeyValPair,
+    idx: usize,
+    block_type: BlockType,
+    block_offset: u64,
+) -> io::Result<()> {
     match block_type {
         BlockType::MetaIndex => {
             println!("\n************ Meta Index Record {} *************", idx + 1);
@@ -271,14 +280,17 @@ fn print_record_kv(pair: &KeyValPair, idx: usize, block_type: BlockType) -> io::
             println!("\n*************** Data Record {} ****************", idx + 1);
             let (key, stat, seq) = utils::decode_key(&pair.key)?;
             println!(
-                "Seq: {}, Stat: {}\nKey: '{}'\nVal: '{}'",
+                "Seq: {}, Stat: {}\nKey (Offset: {}, Size: {}): '{}'\nVal (Size: {}): '{}'",
                 seq,
                 match stat {
                     1 => "1 (Live)",
                     2 => "2 (Deleted)",
                     _ => "Unknown",
                 },
+                block_offset + pair.key_offset,
+                key.len(),
                 utils::bytes_to_ascii_with_hex(&key),
+                pair.value.len(),
                 utils::bytes_to_ascii_with_hex(&pair.value)
             );
         }
