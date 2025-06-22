@@ -280,7 +280,7 @@ fn print_record_kv(
             println!("\n*************** Data Record {} ****************", idx + 1);
             let (key, stat, seq) = utils::decode_key(&pair.key)?;
             println!(
-                "Seq: {}, Stat: {}\nKey (Offset: {}, Size: {}): '{}'\nVal (Size: {}): '{}'",
+                "Seq: {}, State: {}\nKey (Offset: {}, Size: {}): '{}'\nVal (Size: {}): '{}'",
                 seq,
                 match stat {
                     0 => "0 (Deleted)",
