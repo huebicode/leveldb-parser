@@ -257,7 +257,7 @@ fn print_record_kv(
 ) -> io::Result<()> {
     match block_type {
         BlockType::MetaIndex => {
-            println!("\n************ Meta Index Record {} *************", idx + 1);
+            println!("\n//////////// Meta Index Record {} /////////////", idx + 1);
             let handle = parse_block_handle(&pair.value)?;
             println!(
                 "FilterName: {}\nBlockHandle: Offset: {}, Size: {}",
@@ -267,7 +267,7 @@ fn print_record_kv(
             );
         }
         BlockType::Index => {
-            println!("\n*************** Index Record {} ***************", idx + 1);
+            println!("\n/////////////// Index Record {} ///////////////", idx + 1);
             let handle = parse_block_handle(&pair.value)?;
             println!(
                 "SeparatorKey: {}\nBlockHandle: Offset: {}, Size: {}",
