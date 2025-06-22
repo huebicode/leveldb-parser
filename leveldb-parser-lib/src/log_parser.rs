@@ -115,12 +115,13 @@ fn print_block_data(block: &Block) -> io::Result<()> {
                 _ => println!("\n*********** Unknown Record State *************"),
             }
 
+            let key_len = utils::read_varint(&mut cursor)?;
             // calc key offset from block start + header + cursor position
             let key_offset = block.offset + 7 + cursor.position();
+            let key = utils::read_slice(&mut cursor, key_len as usize)?;
 
-            let key = utils::read_varint_slice(&mut cursor)?;
             println!(
-                "--------- Key (Offset: {}, Length: {}) ---------",
+                "--------- Key (Offset: {}, Size: {}) ---------",
                 key_offset,
                 key.len()
             );
@@ -128,10 +129,7 @@ fn print_block_data(block: &Block) -> io::Result<()> {
 
             if record_state != 0 {
                 let value = utils::read_varint_slice(&mut cursor)?;
-                println!(
-                    "------------- Value (Length: {}) --------------",
-                    value.len()
-                );
+                println!("------------- Value (Size: {}) --------------", value.len());
                 println!("{}", utils::bytes_to_ascii_with_hex(&value));
             }
         }
