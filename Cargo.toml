@@ -1,3 +1,3 @@
 [workspace]
 resolver = "3"
-members = ["cli", "leveldb-parser-lib"]
+members = ["leveldb-parser-cli", "leveldb-parser-lib"]
