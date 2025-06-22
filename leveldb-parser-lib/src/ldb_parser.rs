@@ -283,8 +283,8 @@ fn print_record_kv(
                 "Seq: {}, Stat: {}\nKey (Offset: {}, Size: {}): '{}'\nVal (Size: {}): '{}'",
                 seq,
                 match stat {
+                    0 => "0 (Deleted)",
                     1 => "1 (Live)",
-                    2 => "2 (Deleted)",
                     _ => "Unknown",
                 },
                 block_offset + pair.key_offset,
