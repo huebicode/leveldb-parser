@@ -23,6 +23,7 @@ fn main() {
         }
     };
 
+    println!("File: {}", file_name);
     if file_name.ends_with(".ldb") {
         ldb_parser::parse_file(file_path).unwrap();
     } else if file_name.ends_with(".log") {
