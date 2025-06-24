@@ -128,8 +128,13 @@ fn process_batch(data: &[u8], offset: u64) -> io::Result<()> {
             break;
         }
 
-        let bounds_crossed =
-            process_record(&mut cursor, offset + (offset_adjust * HEADER_SIZE), i)?;
+        let record_sec = batch_header.seq_no + i as u64;
+        let bounds_crossed = process_record(
+            &mut cursor,
+            offset + (offset_adjust * HEADER_SIZE),
+            i,
+            record_sec,
+        )?;
 
         // if block boundaries crossed, adjust offset for next record
         if bounds_crossed > 0 {
@@ -154,11 +159,17 @@ fn read_batch_header(reader: &mut (impl Read + Seek)) -> io::Result<BatchHeader>
     Ok(BatchHeader { seq_no, rec_count })
 }
 
-fn process_record(cursor: &mut Cursor<&[u8]>, block_offset: u64, i: u32) -> io::Result<u64> {
+fn process_record(
+    cursor: &mut Cursor<&[u8]>,
+    block_offset: u64,
+    i: u32,
+    seq: u64,
+) -> io::Result<u64> {
     println!("\n****************** Record {} ******************", i + 1);
     let record_state = cursor.read_u8()?;
     println!(
-        "State: {}",
+        "Seq: {}, State: {}",
+        seq,
         match record_state {
             0 => "0 (Deleted)",
             1 => "1 (Live)",
