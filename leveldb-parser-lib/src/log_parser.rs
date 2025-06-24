@@ -5,6 +5,11 @@ use byteorder::{LittleEndian, ReadBytesExt};
 
 use crate::utils;
 
+// -----------------------------------------------------------------------------
+const BLOCK_SIZE: u64 = 32768;
+const HEADER_SIZE: u64 = 7; // CRC + Data Length + Block Type
+// -----------------------------------------------------------------------------
+
 pub fn parse_file(file_path: &str) -> io::Result<()> {
     let file = File::open(file_path)?;
     let file_size = file.metadata()?.len();
@@ -20,11 +25,9 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
 
         print_block_header(&block, block_counter)?;
 
-        // TODO: calc of key offset will be off when entry spans multiple blocks...
         match block.block_type {
             1 => {
                 // Full Block
-                partial_block_data.clear();
                 process_batch(&block.data, block.offset)?;
             }
             2 => {
@@ -111,49 +114,49 @@ pub fn print_block_header(block: &Block, block_counter: u64) -> io::Result<()> {
 }
 
 fn process_batch(data: &[u8], offset: u64) -> io::Result<()> {
-    println!("---------------- Batch Header ----------------");
+    println!("\n//////////////// Batch Header ////////////////");
 
     let mut cursor = Cursor::new(data);
     let batch_header = read_batch_header(&mut cursor)?;
     println!("Seq: {}", batch_header.seq_no);
-    println!("Records: {}", batch_header.num_records);
+    println!("Records: {}", batch_header.rec_count);
 
-    for i in 0..batch_header.num_records {
+    let mut offset_adjust = 0;
+    for i in 0..batch_header.rec_count {
         if cursor.position() >= data.len() as u64 {
             println!("Unexpected end of data at record: {}", i + 1);
             break;
         }
-        process_single_record(&mut cursor, offset, i)?;
+
+        let bounds_crossed =
+            process_record(&mut cursor, offset + (offset_adjust * HEADER_SIZE), i)?;
+
+        // if block boundaries crossed, adjust offset for next record
+        if bounds_crossed > 0 {
+            offset_adjust += bounds_crossed;
+        }
     }
 
     Ok(())
 }
 
+// -----------------------------------------------------------------------------
+
 struct BatchHeader {
     seq_no: u64,
-    num_records: u32,
+    rec_count: u32,
 }
 
 fn read_batch_header(reader: &mut (impl Read + Seek)) -> io::Result<BatchHeader> {
     let seq_no = reader.read_u64::<LittleEndian>()?;
-    let num_records = reader.read_u32::<LittleEndian>()?;
+    let rec_count = reader.read_u32::<LittleEndian>()?;
 
-    Ok(BatchHeader {
-        seq_no,
-        num_records,
-    })
+    Ok(BatchHeader { seq_no, rec_count })
 }
 
-fn process_single_record(cursor: &mut Cursor<&[u8]>, block_offset: u64, i: u32) -> io::Result<()> {
+fn process_record(cursor: &mut Cursor<&[u8]>, block_offset: u64, i: u32) -> io::Result<u64> {
     println!("\n****************** Record {} ******************", i + 1);
     let record_state = cursor.read_u8()?;
-
-    let key_len = utils::read_varint(cursor)?;
-
-    // calc key offset from block start + header + header in between + cursor position
-    let key_offset = block_offset + 7 + cursor.position();
-    let key = utils::read_slice(cursor, key_len as usize)?;
-
     println!(
         "State: {}",
         match record_state {
@@ -163,6 +166,17 @@ fn process_single_record(cursor: &mut Cursor<&[u8]>, block_offset: u64, i: u32) 
         },
     );
 
+    let (key, key_offset, key_bounds_crossed) = read_entry_with_offset(cursor, block_offset)?;
+
+    let mut total_bounds_crossed = key_bounds_crossed;
+
+    // if key crossed block boundaries, adjust offset for value entry
+    let adjusted_block_offset = if key_bounds_crossed > 0 {
+        block_offset + (key_bounds_crossed * HEADER_SIZE)
+    } else {
+        block_offset
+    };
+
     println!(
         "Key (Offset: {}, Size: {}): '{}'",
         key_offset,
@@ -171,13 +185,47 @@ fn process_single_record(cursor: &mut Cursor<&[u8]>, block_offset: u64, i: u32) 
     );
 
     if record_state != 0 {
-        let value = utils::read_varint_slice(cursor)?;
+        let (value, value_offset, val_bounds_crossed) =
+            read_entry_with_offset(cursor, adjusted_block_offset)?;
+
+        total_bounds_crossed += val_bounds_crossed;
+
         println!(
-            "Val (Size: {}): '{}'",
+            "Val (Offset: {}, Size: {}): '{}'",
+            value_offset,
             value.len(),
             utils::bytes_to_ascii_with_hex(&value)
         );
     }
 
-    Ok(())
+    Ok(total_bounds_crossed)
+}
+
+// -----------------------------------------------------------------------------
+
+fn read_entry_with_offset(
+    cursor: &mut Cursor<&[u8]>,
+    block_offset: u64,
+) -> io::Result<(Vec<u8>, u64, u64)> {
+    // get entry length
+    let len = utils::read_varint(cursor)?;
+
+    // calc entry offset
+    let current_pos = cursor.position();
+    let start_block = current_pos / BLOCK_SIZE;
+    let offset = current_pos + block_offset + HEADER_SIZE + (start_block * HEADER_SIZE);
+
+    // get entry data
+    let data = utils::read_slice(cursor, len as usize)?;
+
+    // calc crossed bounds count
+    let start_pos = offset - HEADER_SIZE;
+    let start_block = start_pos / BLOCK_SIZE;
+
+    let end_pos = start_pos + len as u64;
+    let end_block = end_pos / BLOCK_SIZE;
+
+    let bounds_crossed = end_block.saturating_sub(start_block);
+
+    Ok((data, offset, bounds_crossed))
 }

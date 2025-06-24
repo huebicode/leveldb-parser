@@ -5,15 +5,14 @@ use leveldb_parser_lib::log_parser;
 use leveldb_parser_lib::manifest_parser;
 
 fn main() {
-    // let args: Vec<String> = std::env::args().collect();
+    let args: Vec<String> = std::env::args().collect();
 
-    // if args.len() < 2 {
-    //     println!("Usage: {} <[.log, .ldb, MANIFEST-] file>", args[0]);
-    //     return;
-    // }
+    if args.len() < 2 {
+        println!("Usage: {} <[.log, .ldb or MANIFEST-] file>", args[0]);
+        return;
+    }
 
-    // let file_path = &args[1];
-    let file_path = "./_/_/000110.log";
+    let file_path = &args[1];
     let path = Path::new(file_path);
 
     let file_name = match path.file_name() {
