@@ -17,7 +17,10 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
 
     let (meta_idx_blk_hndl, idx_blk_hndl) = read_footer(&mut reader)?;
 
-    println!("\n############## Meta Index Block ##############");
+    println!(
+        "\n######## Meta Index Block (Offset: {}) ########",
+        meta_idx_blk_hndl.offset
+    );
     let meta_idx_blk = read_raw_block(
         &mut reader,
         meta_idx_blk_hndl.offset,
@@ -42,7 +45,10 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
         }
     }
 
-    println!("\n################ Index Block #################");
+    println!(
+        "\n########## Index Block (Offset: {}) ###########",
+        idx_blk_hndl.offset
+    );
     let idx_blk = read_raw_block(&mut reader, idx_blk_hndl.offset, idx_blk_hndl.size)?;
     let kv = read_block_data_kvs(&idx_blk.data)?;
 
@@ -73,15 +79,18 @@ struct BlockHandle {
 }
 
 fn read_footer(reader: &mut (impl Read + Seek)) -> io::Result<(BlockHandle, BlockHandle)> {
-    println!("################### Footer ###################");
     reader.seek(io::SeekFrom::End(-48))?;
+    println!(
+        "############# Footer (Offset: {}) #############",
+        reader.stream_position()?
+    );
 
     let meta_blk_hndl = BlockHandle {
         offset: utils::read_varint(reader)?,
         size: utils::read_varint(reader)?,
     };
     println!(
-        "BlockHandle (Meta Index Block): Offset: {:?}, Size: {:?}",
+        "BlockHandle (Meta Index Block): Offset: {}, Size: {}",
         meta_blk_hndl.offset, meta_blk_hndl.size
     );
 
@@ -90,7 +99,7 @@ fn read_footer(reader: &mut (impl Read + Seek)) -> io::Result<(BlockHandle, Bloc
         size: utils::read_varint(reader)?,
     };
     println!(
-        "BlockHandle (Index Block): Offset: {:?}, Size: {:?}",
+        "BlockHandle (Index Block): Offset: {}, Size: {}",
         idx_blk_hndl.offset, idx_blk_hndl.size
     );
 
@@ -188,24 +197,28 @@ fn read_block_data_kvs(data: &[u8]) -> io::Result<Vec<KeyValPair>> {
 }
 
 struct KeyValPair {
-    key: Vec<u8>,
+    shared_len: usize,
+    inline_len: usize,
+    value_len: usize,
     key_offset: u64,
+    key: Vec<u8>,
+    val_offset: u64,
     value: Vec<u8>,
 }
 
 fn read_block_entry(cursor: &mut Cursor<&[u8]>, prev_key: &[u8]) -> io::Result<KeyValPair> {
     let shared_len = utils::read_varint(cursor)? as usize;
-    let non_shared_len = utils::read_varint(cursor)? as usize;
+    let inline_len = utils::read_varint(cursor)? as usize;
     let value_len = utils::read_varint(cursor)? as usize;
 
     let key_offset = cursor.position();
 
     // read inline key
-    let mut inline_key = vec![0; non_shared_len];
+    let mut inline_key = vec![0; inline_len];
     cursor.read_exact(&mut inline_key)?;
 
     // construct full key
-    let mut key = Vec::with_capacity(shared_len + non_shared_len);
+    let mut key = Vec::with_capacity(shared_len + inline_len);
 
     if shared_len > 0 && shared_len <= prev_key.len() {
         key.extend_from_slice(&prev_key[0..shared_len]);
@@ -214,12 +227,17 @@ fn read_block_entry(cursor: &mut Cursor<&[u8]>, prev_key: &[u8]) -> io::Result<K
     key.extend_from_slice(&inline_key);
 
     // value
+    let val_offset = cursor.position();
     let mut value = vec![0; value_len];
     cursor.read_exact(&mut value)?;
 
     Ok(KeyValPair {
-        key,
+        shared_len,
+        inline_len,
+        value_len,
         key_offset,
+        key,
+        val_offset,
         value,
     })
 }
@@ -278,19 +296,27 @@ fn print_record_kv(
         }
         BlockType::Data => {
             println!("\n*************** Data Record {} ****************", idx + 1);
-            let (key, stat, seq) = utils::decode_key(&pair.key)?;
+            let (key, state, seq) = utils::decode_key(&pair.key)?;
             println!(
-                "Seq: {}, State: {}\nKey (Offset: {}, Size: {}): '{}'\nVal (Size: {}): '{}'",
+                "Seq: {}, State: {}",
                 seq,
-                match stat {
+                match state {
                     0 => "0 (Deleted)",
                     1 => "1 (Live)",
                     _ => "Unknown",
                 },
+            );
+            println!(
+                "Key (Offset: {}, Size: {} [shared], {} [inline]): '{}'",
                 block_offset + pair.key_offset,
-                key.len(),
+                pair.shared_len,
+                pair.inline_len,
                 utils::bytes_to_ascii_with_hex(&key),
-                pair.value.len(),
+            );
+            println!(
+                "Val (Offset: {}, Size: {}): '{}'",
+                block_offset + pair.val_offset,
+                pair.value_len,
                 utils::bytes_to_ascii_with_hex(&pair.value)
             );
         }
