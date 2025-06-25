@@ -22,7 +22,7 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
 }
 
 fn print_block(block: &log_parser::Block, block_counter: u64) -> io::Result<()> {
-    log_parser::print_block_header(block, block_counter)?;
+    log_parser::display::print_block_header(block, block_counter)?;
 
     println!("-------------------- Tags --------------------");
     let mut cursor = Cursor::new(&block.data);

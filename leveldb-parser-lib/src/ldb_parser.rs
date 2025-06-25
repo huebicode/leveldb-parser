@@ -118,10 +118,10 @@ fn read_footer(reader: &mut (impl Read + Seek)) -> io::Result<(BlockHandle, Bloc
     Ok((meta_blk_hndl, idx_blk_hndl))
 }
 
-struct RawBlock {
-    data: Vec<u8>,
-    _compression_type: u8,
-    _crc: u32,
+pub struct RawBlock {
+    pub data: Vec<u8>,
+    pub compression_type: u8,
+    pub crc: u32,
 }
 
 fn read_raw_block(reader: &mut (impl Read + Seek), offset: u64, size: u64) -> io::Result<RawBlock> {
@@ -160,8 +160,8 @@ fn read_raw_block(reader: &mut (impl Read + Seek), offset: u64, size: u64) -> io
 
     Ok(RawBlock {
         data,
-        _compression_type: compression_type,
-        _crc: crc,
+        compression_type,
+        crc,
     })
 }
 

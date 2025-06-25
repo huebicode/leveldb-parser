@@ -9,26 +9,57 @@ use crate::utils;
 const BLOCK_SIZE: u64 = 32768;
 const HEADER_SIZE: u64 = 7; // CRC + Data Length + Block Type
 // -----------------------------------------------------------------------------
+pub struct LogFile {
+    pub blocks: Vec<Block>,
+    pub batches: Vec<Batch>,
+}
 
-pub fn parse_file(file_path: &str) -> io::Result<()> {
+pub struct Block {
+    pub offset: u64,
+    pub crc: u32,
+    pub data_len: u16,
+    pub block_type: u8,
+    pub data: Vec<u8>,
+}
+
+pub struct Batch {
+    pub header: BatchHeader,
+    pub records: Vec<Record>,
+    pub offset: u64,
+}
+
+pub struct BatchHeader {
+    pub seq_no: u64,
+    pub rec_count: u32,
+}
+
+pub struct Record {
+    pub seq: u64,
+    pub state: u8,
+    pub key: Vec<u8>,
+    pub key_offset: u64,
+    pub value: Option<Vec<u8>>,
+    pub value_offset: Option<u64>,
+}
+// -----------------------------------------------------------------------------
+pub fn parse_file(file_path: &str) -> io::Result<LogFile> {
     let file = File::open(file_path)?;
     let file_size = file.metadata()?.len();
     let mut reader = BufReader::new(file);
 
-    let mut block_counter = 1;
+    let mut blocks = Vec::new();
+    let mut batches = Vec::new();
     let mut partial_block_data = Vec::new();
-
     let mut first_block_offset = 0;
 
     while reader.stream_position()? < file_size {
         let block = read_block(&mut reader)?;
 
-        print_block_header(&block, block_counter)?;
-
         match block.block_type {
             1 => {
                 // Full Block
-                process_batch(&block.data, block.offset)?;
+                let batch = parse_batch(&block.data, block.offset)?;
+                batches.push(batch);
             }
             2 => {
                 // First Block
@@ -43,30 +74,19 @@ pub fn parse_file(file_path: &str) -> io::Result<()> {
             4 => {
                 // Last Block
                 partial_block_data.extend_from_slice(&block.data);
-                process_batch(&partial_block_data, first_block_offset)?;
+                let batch = parse_batch(&partial_block_data, first_block_offset)?;
+                batches.push(batch);
                 partial_block_data.clear();
             }
-            _ => {
-                // Zero Block or Unknown Type
-                println!("Block Type {} is not processed.", block.block_type);
-            }
+            _ => {} // Zero Block or Unknown Type - no batch
         }
 
-        block_counter += 1;
+        blocks.push(block);
     }
-    Ok(())
-}
 
+    Ok(LogFile { blocks, batches })
+}
 // -----------------------------------------------------------------------------
-
-pub struct Block {
-    pub offset: u64,
-    pub crc: u32,
-    pub data_len: u16,
-    pub block_type: u8,
-    pub data: Vec<u8>,
-}
-
 pub fn read_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
     let offset = reader.stream_position()?;
 
@@ -86,55 +106,26 @@ pub fn read_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
     })
 }
 
-pub fn print_block_header(block: &Block, block_counter: u64) -> io::Result<()> {
-    println!(
-        "\n########## [ Block {} (Offset: {})] ############",
-        block_counter, block.offset
-    );
-
-    println!("------------------- Header -------------------");
-    if utils::crc_verified(block.crc, &block.data, block.block_type, false) {
-        println!("CRC32C: {:02X} (verified)", block.crc);
-    } else {
-        println!("CRC32C: {:02X} (verification failed!)", block.crc);
-    }
-
-    println!("Data-Length: {} Bytes", block.data_len);
-
-    match block.block_type {
-        0 => println!("Record-Type: 0 (Zero)"),
-        1 => println!("Record-Type: 1 (Full)"),
-        2 => println!("Record-Type: 2 (First)"),
-        3 => println!("Record-Type: 3 (Middle)"),
-        4 => println!("Record-Type: 4 (Last)"),
-        _ => println!("Record-Type: {} (Unknown)", block.block_type),
-    }
-
-    Ok(())
-}
-
-fn process_batch(data: &[u8], offset: u64) -> io::Result<()> {
-    println!("\n//////////////// Batch Header ////////////////");
-
+fn parse_batch(data: &[u8], offset: u64) -> io::Result<Batch> {
     let mut cursor = Cursor::new(data);
-    let batch_header = read_batch_header(&mut cursor)?;
-    println!("Seq: {}", batch_header.seq_no);
-    println!("Records: {}", batch_header.rec_count);
+    let header = read_batch_header(&mut cursor)?;
 
+    let mut records = Vec::with_capacity(header.rec_count as usize);
     let mut offset_adjust = 0;
-    for i in 0..batch_header.rec_count {
+
+    for i in 0..header.rec_count {
         if cursor.position() >= data.len() as u64 {
-            println!("Unexpected end of data at record: {}", i + 1);
-            break;
+            break; // EOF
         }
 
-        let record_sec = batch_header.seq_no + i as u64;
-        let bounds_crossed = process_record(
+        let record_seq = header.seq_no + i as u64;
+        let (record, bounds_crossed) = parse_record(
             &mut cursor,
             offset + (offset_adjust * HEADER_SIZE),
-            i,
-            record_sec,
+            record_seq,
         )?;
+
+        records.push(record);
 
         // if block boundaries crossed, adjust offset for next record
         if bounds_crossed > 0 {
@@ -142,16 +133,13 @@ fn process_batch(data: &[u8], offset: u64) -> io::Result<()> {
         }
     }
 
-    Ok(())
+    Ok(Batch {
+        header,
+        records,
+        offset,
+    })
 }
-
 // -----------------------------------------------------------------------------
-
-struct BatchHeader {
-    seq_no: u64,
-    rec_count: u32,
-}
-
 fn read_batch_header(reader: &mut (impl Read + Seek)) -> io::Result<BatchHeader> {
     let seq_no = reader.read_u64::<LittleEndian>()?;
     let rec_count = reader.read_u32::<LittleEndian>()?;
@@ -159,23 +147,12 @@ fn read_batch_header(reader: &mut (impl Read + Seek)) -> io::Result<BatchHeader>
     Ok(BatchHeader { seq_no, rec_count })
 }
 
-fn process_record(
+fn parse_record(
     cursor: &mut Cursor<&[u8]>,
     block_offset: u64,
-    i: u32,
     seq: u64,
-) -> io::Result<u64> {
-    println!("\n****************** Record {} ******************", i + 1);
-    let record_state = cursor.read_u8()?;
-    println!(
-        "Seq: {}, State: {}",
-        seq,
-        match record_state {
-            0 => "0 (Deleted)",
-            1 => "1 (Live)",
-            _ => "Unknown",
-        },
-    );
+) -> io::Result<(Record, u64)> {
+    let state = cursor.read_u8()?;
 
     let (key, key_offset, key_bounds_crossed) = read_entry_with_offset(cursor, block_offset)?;
 
@@ -188,28 +165,26 @@ fn process_record(
         block_offset
     };
 
-    println!(
-        "Key (Offset: {}, Size: {}): '{}'",
-        key_offset,
-        key.len(),
-        utils::bytes_to_ascii_with_hex(&key)
-    );
-
-    if record_state != 0 {
-        let (value, value_offset, val_bounds_crossed) =
+    let (value, value_offset) = if state != 0 {
+        let (value, val_offset, val_bounds_crossed) =
             read_entry_with_offset(cursor, adjusted_block_offset)?;
 
         total_bounds_crossed += val_bounds_crossed;
+        (Some(value), Some(val_offset))
+    } else {
+        (None, None)
+    };
 
-        println!(
-            "Val (Offset: {}, Size: {}): '{}'",
-            value_offset,
-            value.len(),
-            utils::bytes_to_ascii_with_hex(&value)
-        );
-    }
+    let record = Record {
+        seq,
+        state,
+        key,
+        key_offset,
+        value,
+        value_offset,
+    };
 
-    Ok(total_bounds_crossed)
+    Ok((record, total_bounds_crossed))
 }
 
 // -----------------------------------------------------------------------------
@@ -239,4 +214,141 @@ fn read_entry_with_offset(
     let bounds_crossed = end_block.saturating_sub(start_block);
 
     Ok((data, offset, bounds_crossed))
+}
+// -----------------------------------------------------------------------------
+pub mod display {
+    use super::*;
+    // -----------------------------------------------------------------------------
+    pub fn print_all(log: &LogFile) -> io::Result<()> {
+        let mut current_batch_idx = 0;
+
+        for (i, block) in log.blocks.iter().enumerate() {
+            print_block_header(block, i as u64 + 1)?;
+
+            match block.block_type {
+                1 => {
+                    // Full block
+                    if current_batch_idx < log.batches.len() {
+                        print_batch(&log.batches[current_batch_idx])?;
+                        current_batch_idx += 1;
+                    }
+                }
+                4 => {
+                    // Last block
+                    if current_batch_idx < log.batches.len() {
+                        print_batch(&log.batches[current_batch_idx])?;
+                        current_batch_idx += 1;
+                    }
+                }
+                _ => {} // other block types
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn print_block_header(block: &Block, block_counter: u64) -> io::Result<()> {
+        println!(
+            "\n########## [ Block {} (Offset: {})] ############",
+            block_counter, block.offset
+        );
+
+        println!("------------------- Header -------------------");
+        if utils::crc_verified(block.crc, &block.data, block.block_type, false) {
+            println!("CRC32C: {:02X} (verified)", block.crc);
+        } else {
+            println!("CRC32C: {:02X} (verification failed!)", block.crc);
+        }
+
+        println!("Data-Length: {} Bytes", block.data_len);
+
+        match block.block_type {
+            0 => println!("Record-Type: 0 (Zero)"),
+            1 => println!("Record-Type: 1 (Full)"),
+            2 => println!("Record-Type: 2 (First)"),
+            3 => println!("Record-Type: 3 (Middle)"),
+            4 => println!("Record-Type: 4 (Last)"),
+            _ => println!("Record-Type: {} (Unknown)", block.block_type),
+        }
+
+        Ok(())
+    }
+
+    pub fn print_batch(batch: &Batch) -> io::Result<()> {
+        println!("\n//////////////// Batch Header ////////////////");
+        println!("Seq: {}", batch.header.seq_no);
+        println!("Records: {}", batch.header.rec_count);
+
+        for (i, record) in batch.records.iter().enumerate() {
+            print_record(record, i as u32)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn print_record(record: &Record, index: u32) -> io::Result<()> {
+        println!(
+            "\n****************** Record {} ******************",
+            index + 1
+        );
+        println!(
+            "Seq: {}, State: {}",
+            record.seq,
+            match record.state {
+                0 => "0 (Deleted)",
+                1 => "1 (Live)",
+                _ => "Unknown",
+            },
+        );
+
+        println!(
+            "Key (Offset: {}, Size: {}): '{}'",
+            record.key_offset,
+            record.key.len(),
+            utils::bytes_to_ascii_with_hex(&record.key)
+        );
+
+        if let (Some(value), Some(value_offset)) = (&record.value, record.value_offset) {
+            println!(
+                "Val (Offset: {}, Size: {}): '{}'",
+                value_offset,
+                value.len(),
+                utils::bytes_to_ascii_with_hex(value)
+            );
+        }
+
+        Ok(())
+    }
+    // -----------------------------------------------------------------------------
+    pub fn print_csv(log: &LogFile) -> io::Result<()> {
+        // Header
+        println!("\"seq\",\"state\",\"key\",\"value\"");
+
+        for batch in &log.batches {
+            for record in &batch.records {
+                let state_str = match record.state {
+                    0 => "Deleted",
+                    1 => "Live",
+                    _ => "Unknown",
+                };
+
+                let key_str = utils::bytes_to_ascii_with_hex(&record.key);
+                let key_str = key_str.replace("\"", "\"\"");
+
+                let value_str = if let Some(value) = &record.value {
+                    let vs = utils::bytes_to_ascii_with_hex(value);
+                    vs.replace("\"", "\"\"")
+                } else {
+                    "".to_string()
+                };
+
+                println!(
+                    "\"{}\",\"{}\",\"{}\",\"{}\"",
+                    record.seq, state_str, key_str, value_str
+                );
+            }
+        }
+
+        Ok(())
+    }
 }
