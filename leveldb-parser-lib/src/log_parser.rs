@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, BufReader, Cursor, Read, Seek};
+use std::io::{self, BufReader, Cursor, Read, Seek, Write};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
@@ -248,36 +248,48 @@ pub mod display {
     }
 
     pub fn print_block_header(block: &Block, block_counter: u64) -> io::Result<()> {
-        println!(
+        writeln!(
+            io::stdout(),
             "\n########## [ Block {} (Offset: {})] ############",
-            block_counter, block.offset
-        );
+            block_counter,
+            block.offset
+        )?;
 
-        println!("------------------- Header -------------------");
+        writeln!(
+            io::stdout(),
+            "------------------- Header -------------------"
+        )?;
         if utils::crc_verified(block.crc, &block.data, block.block_type, false) {
-            println!("CRC32C: {:02X} (verified)", block.crc);
+            writeln!(io::stdout(), "CRC32C: {:02X} (verified)", block.crc)?;
         } else {
-            println!("CRC32C: {:02X} (verification failed!)", block.crc);
+            writeln!(
+                io::stdout(),
+                "CRC32C: {:02X} (verification failed!)",
+                block.crc
+            )?;
         }
 
-        println!("Data-Length: {} Bytes", block.data_len);
+        writeln!(io::stdout(), "Data-Length: {} Bytes", block.data_len)?;
 
         match block.block_type {
-            0 => println!("Record-Type: 0 (Zero)"),
-            1 => println!("Record-Type: 1 (Full)"),
-            2 => println!("Record-Type: 2 (First)"),
-            3 => println!("Record-Type: 3 (Middle)"),
-            4 => println!("Record-Type: 4 (Last)"),
-            _ => println!("Record-Type: {} (Unknown)", block.block_type),
+            0 => writeln!(io::stdout(), "Record-Type: 0 (Zero)")?,
+            1 => writeln!(io::stdout(), "Record-Type: 1 (Full)")?,
+            2 => writeln!(io::stdout(), "Record-Type: 2 (First)")?,
+            3 => writeln!(io::stdout(), "Record-Type: 3 (Middle)")?,
+            4 => writeln!(io::stdout(), "Record-Type: 4 (Last)")?,
+            _ => writeln!(io::stdout(), "Record-Type: {} (Unknown)", block.block_type)?,
         }
 
         Ok(())
     }
 
     pub fn print_batch(batch: &Batch) -> io::Result<()> {
-        println!("\n//////////////// Batch Header ////////////////");
-        println!("Seq: {}", batch.header.seq_no);
-        println!("Records: {}", batch.header.rec_count);
+        writeln!(
+            io::stdout(),
+            "\n//////////////// Batch Header ////////////////"
+        )?;
+        writeln!(io::stdout(), "Seq: {}", batch.header.seq_no)?;
+        writeln!(io::stdout(), "Records: {}", batch.header.rec_count)?;
 
         for (i, record) in batch.records.iter().enumerate() {
             print_record(record, i as u32)?;
@@ -287,11 +299,13 @@ pub mod display {
     }
 
     pub fn print_record(record: &Record, index: u32) -> io::Result<()> {
-        println!(
+        writeln!(
+            io::stdout(),
             "\n****************** Record {} ******************",
             index + 1
-        );
-        println!(
+        )?;
+        writeln!(
+            io::stdout(),
             "Seq: {}, State: {}",
             record.seq,
             match record.state {
@@ -299,22 +313,24 @@ pub mod display {
                 1 => "1 (Live)",
                 _ => "Unknown",
             },
-        );
+        )?;
 
-        println!(
+        writeln!(
+            io::stdout(),
             "Key (Offset: {}, Size: {}): '{}'",
             record.key_offset,
             record.key.len(),
             utils::bytes_to_ascii_with_hex(&record.key)
-        );
+        )?;
 
         if let (Some(value), Some(value_offset)) = (&record.value, record.value_offset) {
-            println!(
+            writeln!(
+                io::stdout(),
                 "Val (Offset: {}, Size: {}): '{}'",
                 value_offset,
                 value.len(),
                 utils::bytes_to_ascii_with_hex(value)
-            );
+            )?;
         }
 
         Ok(())
@@ -322,7 +338,7 @@ pub mod display {
     // -----------------------------------------------------------------------------
     pub fn print_csv(log: &LogFile) -> io::Result<()> {
         // Header
-        println!("\"seq\",\"state\",\"key\",\"value\"");
+        writeln!(io::stdout(), "\"seq\",\"state\",\"key\",\"value\"")?;
 
         for batch in &log.batches {
             for record in &batch.records {
@@ -342,10 +358,14 @@ pub mod display {
                     "".to_string()
                 };
 
-                println!(
+                writeln!(
+                    io::stdout(),
                     "\"{}\",\"{}\",\"{}\",\"{}\"",
-                    record.seq, state_str, key_str, value_str
-                );
+                    record.seq,
+                    state_str,
+                    key_str,
+                    value_str
+                )?;
             }
         }
 
