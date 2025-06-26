@@ -115,7 +115,7 @@ pub fn parse_file(file_path: &str) -> io::Result<LdbFile> {
     let meta_index_block = IndexBlock {
         raw_block: meta_index_raw,
         records: meta_index_records,
-        block_handle: footer.meta_index_handle.clone(),
+        block_handle: footer.meta_index_handle,
     };
 
     // Meta Blocks
@@ -136,7 +136,7 @@ pub fn parse_file(file_path: &str) -> io::Result<LdbFile> {
         meta_blocks.push(MetaBlock {
             name,
             raw_block: meta_raw,
-            block_handle: record.block_handle.clone(),
+            block_handle: record.block_handle,
             bloom_filter,
         });
     }
@@ -164,7 +164,7 @@ pub fn parse_file(file_path: &str) -> io::Result<LdbFile> {
     let index_block = IndexBlock {
         raw_block: index_raw,
         records: index_records,
-        block_handle: footer.index_handle.clone(),
+        block_handle: footer.index_handle,
     };
 
     // Data Blocks
@@ -193,7 +193,7 @@ pub fn parse_file(file_path: &str) -> io::Result<LdbFile> {
         data_blocks.push(DataBlock {
             raw_block: data_raw,
             records: data_records,
-            block_handle: record.block_handle.clone(),
+            block_handle: record.block_handle,
         });
     }
 
