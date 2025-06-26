@@ -1,3 +1,6 @@
 [workspace]
 resolver = "3"
 members = ["leveldb-parser-cli", "leveldb-parser-lib"]
+
+[profile.release]
+strip = true
