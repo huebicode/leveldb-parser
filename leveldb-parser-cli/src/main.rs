@@ -25,7 +25,8 @@ fn main() {
 
     // println!("File: {}", file_name);
     if file_name.ends_with(".ldb") {
-        ldb_parser::parse_file(file_path).unwrap();
+        let ldb_file = ldb_parser::parse_file(file_path).unwrap();
+        ldb_parser::display::print_csv(&ldb_file).unwrap();
     } else if file_name.ends_with(".log") {
         let log_file = log_parser::parse_file(file_path).unwrap();
         log_parser::display::print_csv(&log_file).unwrap();
