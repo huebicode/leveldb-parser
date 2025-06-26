@@ -30,7 +30,8 @@ fn main() {
         let log_file = log_parser::parse_file(file_path).unwrap();
         log_parser::display::print_csv(&log_file).unwrap();
     } else if file_name.starts_with("MANIFEST-") {
-        manifest_parser::parse_file(file_path).unwrap();
+        let manifest_file = manifest_parser::parse_file(file_path).unwrap();
+        manifest_parser::display::print_all(&manifest_file).unwrap();
     } else {
         println!("Unsupported file type: {}", file_path);
     }

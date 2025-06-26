@@ -6,63 +6,110 @@ use byteorder::ReadBytesExt;
 use crate::log_parser;
 use crate::utils;
 
-pub fn parse_file(file_path: &str) -> io::Result<()> {
+pub struct ManifestFile {
+    pub blocks: Vec<ManifestBlock>,
+}
+
+pub struct ManifestBlock {
+    pub block: log_parser::Block,
+    pub entries: Vec<ManifestEntry>,
+    pub block_no: u64,
+}
+
+pub enum ManifestEntry {
+    Comparator(Vec<u8>),
+    LogNumber(u64),
+    NextFileNumber(u64),
+    LastSeq(u64),
+    CompactPointer {
+        level: u64,
+        key: Vec<u8>,
+        seq: u64,
+        state: u8,
+    },
+    RemoveFile {
+        level: u64,
+        file_no: u64,
+    },
+    AddFile {
+        level: u64,
+        file_no: u64,
+        file_size: u64,
+        sm_key: Vec<u8>,
+        sm_seq: u64,
+        sm_state: u8,
+        lg_key: Vec<u8>,
+        lg_seq: u64,
+        lg_state: u8,
+    },
+    PrevLogNumber(u64),
+    Unknown(u8),
+}
+
+pub fn parse_file(file_path: &str) -> io::Result<ManifestFile> {
     let file = File::open(file_path)?;
     let file_size = file.metadata()?.len();
     let mut reader = BufReader::new(file);
 
-    let mut block_counter = 1;
+    let mut blocks = Vec::new();
+    let mut block_no = 1;
+
     while reader.stream_position()? < file_size {
         let block = log_parser::read_block(&mut reader)?;
-        print_block(&block, block_counter)?;
+        let entries = parse_block(&block)?;
 
-        block_counter += 1;
+        blocks.push(ManifestBlock {
+            block,
+            entries,
+            block_no,
+        });
+
+        block_no += 1;
     }
-    Ok(())
+
+    Ok(ManifestFile { blocks })
 }
 
-fn print_block(block: &log_parser::Block, block_counter: u64) -> io::Result<()> {
-    log_parser::display::print_block_header(block, block_counter)?;
-
-    println!("-------------------- Tags --------------------");
+fn parse_block(block: &log_parser::Block) -> io::Result<Vec<ManifestEntry>> {
+    let mut entries = Vec::new();
     let mut cursor = Cursor::new(&block.data);
+
     while cursor.position() < block.data.len() as u64 {
         let tag = cursor.read_u8()?;
 
-        match tag {
+        let entry = match tag {
             0x01 => {
                 let value = utils::read_varint_slice(&mut cursor)?;
-                println!("[1] Comparator: {}", utils::bytes_to_ascii_with_hex(&value));
+                ManifestEntry::Comparator(value)
             }
             0x02 => {
                 let log_no = utils::read_varint(&mut cursor)?;
-                println!("[2] LogNumber: {}", log_no);
+                ManifestEntry::LogNumber(log_no)
             }
             0x03 => {
                 let next_file_no = utils::read_varint(&mut cursor)?;
-                println!("[3] NextFileNumber: {}", next_file_no);
+                ManifestEntry::NextFileNumber(next_file_no)
             }
             0x04 => {
                 let last_seq_no = utils::read_varint(&mut cursor)?;
-                println!("[4] LastSeq: {}", last_seq_no);
+                ManifestEntry::LastSeq(last_seq_no)
             }
             0x05 => {
                 let level = utils::read_varint(&mut cursor)?;
                 let pointer_key = utils::read_varint_slice(&mut cursor)?;
-                let (key, stat, seq) = utils::decode_key(&pointer_key)?;
+                let (key, state, seq) = utils::decode_key(&pointer_key)?;
 
-                println!(
-                    "[5] CompactPointer: Level: {}, Key: {} @ {} : {}",
+                ManifestEntry::CompactPointer {
                     level,
-                    utils::bytes_to_ascii_with_hex(&key),
+                    key,
                     seq,
-                    stat
-                );
+                    state,
+                }
             }
             0x06 => {
                 let level = utils::read_varint(&mut cursor)?;
                 let file_no = utils::read_varint(&mut cursor)?;
-                println!("[6] RemoveFile: Level: {}, No.: {}", level, file_no);
+                ManifestEntry::RemoveFile { level, file_no }
             }
             0x07 => {
                 let level = utils::read_varint(&mut cursor)?;
@@ -70,31 +117,133 @@ fn print_block(block: &log_parser::Block, block_counter: u64) -> io::Result<()> 
                 let file_size = utils::read_varint(&mut cursor)?;
 
                 let smallest_key = utils::read_varint_slice(&mut cursor)?;
-                let (sm_key, sm_stat, sm_seq) = utils::decode_key(&smallest_key)?;
+                let (sm_key, sm_state, sm_seq) = utils::decode_key(&smallest_key)?;
 
                 let largest_key = utils::read_varint_slice(&mut cursor)?;
-                let (lg_key, lg_stat, lg_seq) = utils::decode_key(&largest_key)?;
+                let (lg_key, lg_state, lg_seq) = utils::decode_key(&largest_key)?;
 
-                println!(
+                ManifestEntry::AddFile {
+                    level,
+                    file_no,
+                    file_size,
+                    sm_key,
+                    sm_seq,
+                    sm_state,
+                    lg_key,
+                    lg_seq,
+                    lg_state,
+                }
+            }
+            0x09 => {
+                let prev_log_no = utils::read_varint(&mut cursor)?;
+                ManifestEntry::PrevLogNumber(prev_log_no)
+            }
+            _ => ManifestEntry::Unknown(tag),
+        };
+
+        entries.push(entry);
+    }
+
+    Ok(entries)
+}
+
+pub mod display {
+    use super::*;
+    use std::io::Write;
+
+    pub fn print_all(manifest: &ManifestFile) -> io::Result<()> {
+        for block in &manifest.blocks {
+            print_manifest_block(block)?;
+        }
+        Ok(())
+    }
+
+    pub fn print_manifest_block(block: &ManifestBlock) -> io::Result<()> {
+        log_parser::display::print_block_header(&block.block, block.block_no)?;
+
+        writeln!(
+            io::stdout(),
+            "-------------------- Tags --------------------"
+        )?;
+        for entry in &block.entries {
+            print_entry(entry)?;
+        }
+
+        Ok(())
+    }
+
+    fn print_entry(entry: &ManifestEntry) -> io::Result<()> {
+        match entry {
+            ManifestEntry::Comparator(value) => {
+                writeln!(
+                    io::stdout(),
+                    "[1] Comparator: {}",
+                    utils::bytes_to_ascii_with_hex(value)
+                )
+            }
+            ManifestEntry::LogNumber(log_no) => {
+                writeln!(io::stdout(), "[2] LogNumber: {}", log_no)
+            }
+            ManifestEntry::NextFileNumber(next_file_no) => {
+                writeln!(io::stdout(), "[3] NextFileNumber: {}", next_file_no)
+            }
+            ManifestEntry::LastSeq(last_seq_no) => {
+                writeln!(io::stdout(), "[4] LastSeq: {}", last_seq_no)
+            }
+            ManifestEntry::CompactPointer {
+                level,
+                key,
+                seq,
+                state,
+            } => {
+                writeln!(
+                    io::stdout(),
+                    "[5] CompactPointer: Level: {}, Key: {} @ {} : {}",
+                    level,
+                    utils::bytes_to_ascii_with_hex(key),
+                    seq,
+                    state
+                )
+            }
+            ManifestEntry::RemoveFile { level, file_no } => {
+                writeln!(
+                    io::stdout(),
+                    "[6] RemoveFile: Level: {}, No.: {}",
+                    level,
+                    file_no
+                )
+            }
+            ManifestEntry::AddFile {
+                level,
+                file_no,
+                file_size,
+                sm_key,
+                sm_seq,
+                sm_state,
+                lg_key,
+                lg_seq,
+                lg_state,
+            } => {
+                writeln!(
+                    io::stdout(),
                     "[7] AddFile: Level: {}, No.: {}, Size: {} Bytes, Key-Range: '{}' @ {} : {} .. '{}' @ {} : {}",
                     level,
                     file_no,
                     file_size,
-                    utils::bytes_to_ascii_with_hex(&sm_key),
+                    utils::bytes_to_ascii_with_hex(sm_key),
                     sm_seq,
-                    sm_stat,
-                    utils::bytes_to_ascii_with_hex(&lg_key),
+                    sm_state,
+                    utils::bytes_to_ascii_with_hex(lg_key),
                     lg_seq,
-                    lg_stat
-                );
+                    lg_state
+                )
             }
-            0x09 => {
-                let prev_log_no = utils::read_varint(&mut cursor)?;
-                println!("[9] PrevLogNumber: {}", prev_log_no);
+            ManifestEntry::PrevLogNumber(prev_log_no) => {
+                writeln!(io::stdout(), "[9] PrevLogNumber: {}", prev_log_no)
             }
-            _ => println!("Unknown tag: {:02X}", tag),
-        };
+            ManifestEntry::Unknown(tag) => {
+                writeln!(io::stdout(), "Unknown tag: {:02X}", tag)
+            }
+        }
     }
-
-    Ok(())
 }
