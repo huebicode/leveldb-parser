@@ -246,4 +246,78 @@ pub mod display {
             }
         }
     }
+
+    pub fn print_csv(manifest: &ManifestFile) -> io::Result<()> {
+        // Header
+        writeln!(io::stdout(), "\"tag\",\"value\"")?;
+
+        for block in &manifest.blocks {
+            for entry in &block.entries {
+                let (tag, value) = match entry {
+                    ManifestEntry::Comparator(value) => (
+                        "Comparator",
+                        format!("{}", utils::bytes_to_ascii_with_hex(value)),
+                    ),
+                    ManifestEntry::LogNumber(log_no) => ("LogNumber", format!("{}", log_no)),
+                    ManifestEntry::NextFileNumber(next_file_no) => {
+                        ("NextFileNumber", format!("{}", next_file_no))
+                    }
+                    ManifestEntry::LastSeq(last_seq_no) => ("LastSeq", format!("{}", last_seq_no)),
+                    ManifestEntry::CompactPointer {
+                        level,
+                        key,
+                        seq,
+                        state,
+                    } => (
+                        "CompactPointer",
+                        format!(
+                            "Level: {}, Key: {} @ {} : {}",
+                            level,
+                            utils::bytes_to_ascii_with_hex(key),
+                            seq,
+                            state
+                        ),
+                    ),
+                    ManifestEntry::RemoveFile { level, file_no } => {
+                        ("RemoveFile", format!("Level: {}, No.: {}", level, file_no))
+                    }
+                    ManifestEntry::AddFile {
+                        level,
+                        file_no,
+                        file_size,
+                        sm_key,
+                        sm_seq,
+                        sm_state,
+                        lg_key,
+                        lg_seq,
+                        lg_state,
+                    } => (
+                        "AddFile",
+                        format!(
+                            "Level: {}, No.: {}, Size: {} Bytes, Key-Range: '{}' @ {} : {} .. '{}' @ {} : {}",
+                            level,
+                            file_no,
+                            file_size,
+                            utils::bytes_to_ascii_with_hex(sm_key),
+                            sm_seq,
+                            sm_state,
+                            utils::bytes_to_ascii_with_hex(lg_key),
+                            lg_seq,
+                            lg_state
+                        ),
+                    ),
+                    ManifestEntry::PrevLogNumber(prev_log_no) => {
+                        ("PrevLogNumber", format!("{}", prev_log_no))
+                    }
+                    ManifestEntry::Unknown(tag) => ("Unknown", format!("{:02X}", tag)),
+                };
+
+                let escaped_value = value.replace("\"", "\"\"");
+
+                writeln!(io::stdout(), "\"{}\",\"{}\"", tag, escaped_value)?;
+            }
+        }
+
+        Ok(())
+    }
 }
