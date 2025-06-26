@@ -254,10 +254,9 @@ pub mod display {
         for block in &manifest.blocks {
             for entry in &block.entries {
                 let (tag, value) = match entry {
-                    ManifestEntry::Comparator(value) => (
-                        "Comparator",
-                        format!("{}", utils::bytes_to_ascii_with_hex(value)),
-                    ),
+                    ManifestEntry::Comparator(value) => {
+                        ("Comparator", utils::bytes_to_ascii_with_hex(value))
+                    }
                     ManifestEntry::LogNumber(log_no) => ("LogNumber", format!("{}", log_no)),
                     ManifestEntry::NextFileNumber(next_file_no) => {
                         ("NextFileNumber", format!("{}", next_file_no))
