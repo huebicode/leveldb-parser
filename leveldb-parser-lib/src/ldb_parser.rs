@@ -63,9 +63,9 @@ pub struct DataRecord {
 
 pub struct RawBlock {
     pub data: Vec<u8>,
-    pub original_data: Vec<u8>,
     pub compression_type: u8,
     pub crc: u32,
+    pub crc_valid: bool,
 }
 
 pub struct KeyValPair {
@@ -249,23 +249,24 @@ fn read_raw_block(reader: &mut (impl Read + Seek), offset: u64, size: u64) -> io
     // crc
     let crc = reader.read_u32::<LittleEndian>()?;
 
-    let original_data = data.clone();
+    // verify crc
+    let crc_valid = utils::crc_verified(crc, &data, compression_type, true);
 
-    // decompress data
-    if compression_type == 0x1 {
-        let decompressed = snap::raw::Decoder::new().decompress_vec(&data)?;
-        data = decompressed;
+    // decompress data if needed
+    let data = if compression_type == 0x1 {
+        snap::raw::Decoder::new().decompress_vec(&data)?
     } else if compression_type == 0x2 {
         // NOTE: not tested
-        let decompressed = zstd::decode_all(data.as_slice())?;
-        data = decompressed;
-    }
+        zstd::decode_all(data.as_slice())?
+    } else {
+        data
+    };
 
     Ok(RawBlock {
         data,
-        original_data,
         compression_type,
         crc,
+        crc_valid,
     })
 }
 
@@ -535,12 +536,7 @@ pub mod display {
             )?,
         }
 
-        if utils::crc_verified(
-            raw_block.crc,
-            &raw_block.original_data,
-            raw_block.compression_type,
-            true,
-        ) {
+        if raw_block.crc_valid {
             writeln!(io::stdout(), "CRC32C: {:02X} (verified)", raw_block.crc)?;
         } else {
             writeln!(
