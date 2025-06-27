@@ -1,6 +1,6 @@
 # LevelDB Parser
 
-This project is part of my Master’s thesis in *Digital forensics* at *Hochschule Albstadt-Sigmaringen*, Germany, which involves developing a parser for LevelDB. The final thesis will be uploaded here after completion.
+This project is part of my master’s thesis in digital forensics at *Hochschule Albstadt-Sigmaringen*, Germany, which involves developing a parser for LevelDB. The final thesis will be uploaded here after completion.
 
 ## Project Goal
 
