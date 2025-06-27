@@ -1,7 +1,6 @@
-# LevelDB Parser (Master’s Thesis Project)
+# LevelDB Parser
 
-This is the early-stage repository for my Master’s thesis project, which involves developing a parser for LevelDB.
-
+This project is part of my Master’s thesis in *Digital forensics* at *Hochschule Albstadt-Sigmaringen*, Germany, which involves developing a parser for LevelDB. The final thesis will be uploaded here after completion.
 
 ## Project Goal
 
@@ -14,18 +13,28 @@ The goal is to explore and understand the internal structure of LevelDB and impl
 
 ## Status
 
-**Work in progress!** – I’m curretly at the beginning of the implementation phase. So this repository will be continuously updated and changed as the thesis progresses.
+**Work in progress!** – This repository will be continuously updated and changed as the thesis progresses.
 
 
-## Features
+Implemented features:
 
 - [x] parse `.log` files
 - [x] parse `MANIFEST` files
 - [x] parse `.ldb` files
-- [ ] GUI with Tauri
+- [x] CLI
+- [ ] GUI
 
+## Build
+- install Rust for your system: https://www.rust-lang.org/
+- download this project
+- in the project dir execute `cargo build --release`
+- the application will be compiled in `target/release`
 
-## Thesis Info
+## CLI
+`leveldb-parser-cli` can parse `.log`, `.ldb` or `MANIFEST` files. 
 
-This project is part of my Master’s thesis in *Digital forensics* at *Hochschule Albstadt-Sigmaringen*, Germany. The final thesis will be uploaded here once it’s submitted.
+### Usage
+`leveldb-parser-cli [-a] <file>`
+
+Default output is CSV with key/value information. Option `-a` will output all available details.
 
