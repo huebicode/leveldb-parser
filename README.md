@@ -24,12 +24,6 @@ Implemented features:
 - [x] CLI
 - [ ] GUI
 
-## Build
-- install Rust for your system: https://www.rust-lang.org/
-- download this project
-- in the project dir execute `cargo build --release`
-- the application will be compiled in `target/release`
-
 ## CLI
 `leveldb-parser-cli` can parse `.log`, `.ldb` or `MANIFEST` files. 
 
@@ -38,3 +32,12 @@ Implemented features:
 
 Default output is CSV with key/value information. Option `-a` will output all available details.
 
+## Build
+Pre-built binaries are available under [Releases](https://github.com/huebicode/leveldb-parser/releases).
+
+Alternatively, to build from source:
+- install Rust: https://www.rust-lang.org
+- install Tauri and its prerequisites: https://tauri.app
+- download this project
+- execute `cargo build --release` in the project dir
+- the applications will be compiled in `target/release`
