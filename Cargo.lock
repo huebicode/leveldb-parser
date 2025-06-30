@@ -1878,6 +1878,7 @@ dependencies = [
 name = "leveldb-parser-gui"
 version = "0.1.0"
 dependencies = [
+ "leveldb-parser-lib",
  "serde",
  "serde_json",
  "tauri",

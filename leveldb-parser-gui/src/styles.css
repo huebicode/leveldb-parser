@@ -1,0 +1,19 @@
+#drop-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(128, 128, 128, 0.5);
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+#drop-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#output {
+    white-space: pre-line;
+    font-family: monospace;
+}
