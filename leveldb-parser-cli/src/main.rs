@@ -2,9 +2,7 @@ use std::io;
 use std::path::Path;
 use std::process;
 
-use leveldb_parser_lib::ldb_parser;
-use leveldb_parser_lib::log_parser;
-use leveldb_parser_lib::manifest_parser;
+use leveldb_parser_lib::{ldb_parser, log_parser, manifest_parser};
 
 fn main() {
     if let Err(e) = run() {
