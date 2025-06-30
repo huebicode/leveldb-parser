@@ -620,7 +620,7 @@ pub mod export {
     pub fn csv_string(ldb: &LdbFile) -> String {
         let mut csv = String::new();
         // Header
-        csv.push_str("seq,state,key,value\n");
+        csv.push_str("\"seq\",\"state\",\"key\",\"value\"\n");
 
         for data_block in &ldb.data_blocks {
             for record in &data_block.records {
@@ -634,7 +634,7 @@ pub mod export {
                 let value_str = utils::bytes_to_ascii_with_hex(&record.value).replace("\"", "\"\"");
 
                 csv.push_str(&format!(
-                    "{},{},{},{}\n",
+                    "\"{}\",\"{}\",\"{}\",\"{}\"\n",
                     record.seq, state_str, key_str, value_str
                 ));
             }

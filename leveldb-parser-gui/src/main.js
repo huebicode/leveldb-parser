@@ -19,9 +19,60 @@ function handleDrop(file_paths) {
     invoke('process_dropped_files', { paths: file_paths })
 }
 
-const outputElem = document.getElementById('output')
-listen('ldb_csv', e => {
-    if (outputElem) {
-        outputElem.textContent = e.payload
+// ag-grid ---------------------------------------------------------------------
+const gridOptions = {
+    columnDefs: [
+        { field: "Seq" },
+        { field: "State" },
+        { field: "Key" },
+        { field: "Value" }
+    ],
+    rowData: [],
+}
+
+
+const myGridElement = document.querySelector('#myGrid')
+const gridApi = agGrid.createGrid(myGridElement, gridOptions)
+
+function parseCsvLine(line) {
+    const result = []
+    let current = ''
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i]
+        if (char === '"' && line[i + 1] === '"') {
+            current += '"'
+            i++ // skip next quote
+        } else if (char === '"') {
+            inQuotes = !inQuotes
+        } else if (char === ',' && !inQuotes) {
+            // remove hex byte sequences
+            result.push(current.replace(/\\x[0-9A-Fa-f]{2}/g, ''))
+            current = ''
+        } else {
+            current += char
+        }
     }
+    // remove hex byte sequences from the last field
+    result.push(current.replace(/\\x[0-9A-Fa-f]{2}/g, ''))
+    return result
+}
+
+// -----------------------------------------------------------------------------
+listen('ldb_csv', e => {
+    const csv = e.payload
+    const [headerLine, ...lines] = csv.trim().split('\n')
+    const headers = parseCsvLine(headerLine)
+
+    const rowData = lines.map(line => {
+        const values = parseCsvLine(line)
+        const obj = {}
+        headers.forEach((header, idx) => {
+            obj[header.charAt(0).toUpperCase() + header.slice(1)] = values[idx]
+        })
+        return obj
+    })
+
+    gridApi.setGridOption('rowData', rowData)
 })
