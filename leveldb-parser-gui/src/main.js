@@ -22,14 +22,18 @@ function handleDrop(file_paths) {
 // ag-grid ---------------------------------------------------------------------
 const gridOptions = {
     columnDefs: [
-        { field: "Seq" },
+        {
+            field: "Seq",
+            comparator: (valueA, valueB) => valueA - valueB,
+            sort: 'asc',
+            headerName: "Sequence",
+        },
         { field: "State" },
         { field: "Key" },
         { field: "Value" }
     ],
     rowData: [],
 }
-
 
 const myGridElement = document.querySelector('#myGrid')
 const gridApi = agGrid.createGrid(myGridElement, gridOptions)
@@ -47,15 +51,13 @@ function parseCsvLine(line) {
         } else if (char === '"') {
             inQuotes = !inQuotes
         } else if (char === ',' && !inQuotes) {
-            // remove hex byte sequences
-            result.push(current.replace(/\\x[0-9A-Fa-f]{2}/g, ''))
+            result.push(current)
             current = ''
         } else {
             current += char
         }
     }
-    // remove hex byte sequences from the last field
-    result.push(current.replace(/\\x[0-9A-Fa-f]{2}/g, ''))
+    result.push(current)
     return result
 }
 

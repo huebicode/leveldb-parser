@@ -51,6 +51,19 @@ pub fn bytes_to_ascii_with_hex(bytes: &[u8]) -> String {
         .collect()
 }
 
+pub fn bytes_to_ascii_without_hex(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .filter_map(|&b| {
+            if b.is_ascii_graphic() || b == b' ' {
+                Some(b as char)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 pub fn decode_key(key: &[u8]) -> io::Result<(Vec<u8>, u8, u64)> {
     if key.len() < 8 {
         return Err(io::Error::new(io::ErrorKind::InvalidData, "Key too short"));

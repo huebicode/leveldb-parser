@@ -630,8 +630,9 @@ pub mod export {
                     _ => "Unknown",
                 };
 
-                let key_str = utils::bytes_to_ascii_with_hex(&record.key).replace("\"", "\"\"");
-                let value_str = utils::bytes_to_ascii_with_hex(&record.value).replace("\"", "\"\"");
+                let key_str = utils::bytes_to_ascii_without_hex(&record.key).replace("\"", "\"\"");
+                let value_str =
+                    utils::bytes_to_ascii_without_hex(&record.value).replace("\"", "\"\"");
 
                 csv.push_str(&format!(
                     "\"{}\",\"{}\",\"{}\",\"{}\"\n",
