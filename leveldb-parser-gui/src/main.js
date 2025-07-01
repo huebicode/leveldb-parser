@@ -25,12 +25,17 @@ const gridOptions = {
         {
             field: "Seq",
             comparator: (valueA, valueB) => valueA - valueB,
-            sort: 'asc',
-            headerName: "Sequence",
+            // sort: 'asc',
+            headerName: "Seq.#",
+            flex: 0.5,
+            minWidth: 100,
         },
-        { field: "State" },
-        { field: "Key" },
-        { field: "Value" }
+        { field: "K", headerName: "Key", flex: 2 },
+        { field: "V", headerName: "Value", flex: 5 },
+        { field: "St", headerName: "State", flex: 0.5, minWidth: 100 },
+        { field: "BO", headerName: "Block Offset", flex: 0.5, minWidth: 120 },
+        { field: "C", headerName: "Compressed", flex: 0.5, minWidth: 120 },
+        { field: "F", headerName: "File", flex: 0.5, minWidth: 120 },
     ],
     rowData: [],
 }
@@ -71,10 +76,15 @@ listen('ldb_csv', e => {
         const values = parseCsvLine(line)
         const obj = {}
         headers.forEach((header, idx) => {
-            obj[header.charAt(0).toUpperCase() + header.slice(1)] = values[idx]
+            if (header === "C") {
+                obj[header] = values[idx] === "true"
+            } else {
+                obj[header] = values[idx]
+            }
         })
         return obj
     })
 
+    console.log(rowData)
     gridApi.setGridOption('rowData', rowData)
 })

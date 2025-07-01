@@ -617,12 +617,14 @@ pub mod display {
 pub mod export {
     use super::*;
 
-    pub fn csv_string(ldb: &LdbFile) -> String {
+    pub fn csv_string(ldb: &LdbFile, filename: &str) -> String {
         let mut csv = String::new();
         // Header
-        csv.push_str("\"seq\",\"state\",\"key\",\"value\"\n");
+        csv.push_str("\"Seq\",\"K\",\"V\",\"St\",\"BO\",\"C\",\"F\"\n");
 
         for data_block in &ldb.data_blocks {
+            let compressed = data_block.raw_block.compression_type != 0;
+
             for record in &data_block.records {
                 let state_str = match record.state {
                     0 => "Deleted",
@@ -635,8 +637,14 @@ pub mod export {
                     utils::bytes_to_ascii_without_hex(&record.value).replace("\"", "\"\"");
 
                 csv.push_str(&format!(
-                    "\"{}\",\"{}\",\"{}\",\"{}\"\n",
-                    record.seq, state_str, key_str, value_str
+                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
+                    record.seq,
+                    key_str,
+                    value_str,
+                    state_str,
+                    data_block.block_handle.offset,
+                    compressed,
+                    filename
                 ));
             }
         }
