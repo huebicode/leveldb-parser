@@ -25,46 +25,23 @@ const gridOptions = {
         {
             field: "Seq",
             comparator: (valueA, valueB) => valueA - valueB,
-            // sort: 'asc',
             headerName: "Seq.#",
             flex: 0.5,
-            minWidth: 100,
+            minWidth: 70,
         },
-        { field: "K", headerName: "Key", flex: 2 },
-        { field: "V", headerName: "Value", flex: 5 },
-        { field: "St", headerName: "State", flex: 0.5, minWidth: 100 },
-        { field: "BO", headerName: "Block Offset", flex: 0.5, minWidth: 120 },
-        { field: "C", headerName: "Compressed", flex: 0.5, minWidth: 120 },
-        { field: "F", headerName: "File", flex: 0.5, minWidth: 120 },
+        { field: "K", headerName: "Key", flex: 2, minWidth: 100 },
+        { field: "V", headerName: "Value", flex: 5, minWidth: 100 },
+        { field: "Cr", headerName: "CRC32", flex: 0.5, minWidth: 80 },
+        { field: "St", headerName: "State", flex: 0.5, minWidth: 70 },
+        { field: "BO", headerName: "Block Offset", flex: 0.5, minWidth: 110 },
+        { field: "C", headerName: "Compressed", flex: 0.5, minWidth: 120, cellStyle: { display: 'flex', justifyContent: 'center' } },
+        { field: "F", headerName: "File", flex: 0.5, minWidth: 110 },
     ],
     rowData: [],
 }
 
 const myGridElement = document.querySelector('#myGrid')
 const gridApi = agGrid.createGrid(myGridElement, gridOptions)
-
-function parseCsvLine(line) {
-    const result = []
-    let current = ''
-    let inQuotes = false
-
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i]
-        if (char === '"' && line[i + 1] === '"') {
-            current += '"'
-            i++ // skip next quote
-        } else if (char === '"') {
-            inQuotes = !inQuotes
-        } else if (char === ',' && !inQuotes) {
-            result.push(current)
-            current = ''
-        } else {
-            current += char
-        }
-    }
-    result.push(current)
-    return result
-}
 
 // -----------------------------------------------------------------------------
 listen('ldb_csv', e => {
@@ -88,3 +65,27 @@ listen('ldb_csv', e => {
     console.log(rowData)
     gridApi.setGridOption('rowData', rowData)
 })
+
+// helper ----------------------------------------------------------------------
+function parseCsvLine(line) {
+    const result = []
+    let current = ''
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i]
+        if (char === '"' && line[i + 1] === '"') {
+            current += '"'
+            i++ // skip next quote
+        } else if (char === '"') {
+            inQuotes = !inQuotes
+        } else if (char === ',' && !inQuotes) {
+            result.push(current)
+            current = ''
+        } else {
+            current += char
+        }
+    }
+    result.push(current)
+    return result
+}

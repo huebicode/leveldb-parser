@@ -620,10 +620,15 @@ pub mod export {
     pub fn csv_string(ldb: &LdbFile, filename: &str) -> String {
         let mut csv = String::new();
         // Header
-        csv.push_str("\"Seq\",\"K\",\"V\",\"St\",\"BO\",\"C\",\"F\"\n");
+        csv.push_str("\"Seq\",\"K\",\"V\",\"Cr\",\"St\",\"BO\",\"C\",\"F\"\n");
 
         for data_block in &ldb.data_blocks {
             let compressed = data_block.raw_block.compression_type != 0;
+            let crc_valid = if data_block.raw_block.crc_valid {
+                "valid"
+            } else {
+                "failed"
+            };
 
             for record in &data_block.records {
                 let state_str = match record.state {
@@ -637,10 +642,11 @@ pub mod export {
                     utils::bytes_to_ascii_without_hex(&record.value).replace("\"", "\"\"");
 
                 csv.push_str(&format!(
-                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
+                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
                     record.seq,
                     key_str,
                     value_str,
+                    crc_valid,
                     state_str,
                     data_block.block_handle.offset,
                     compressed,
