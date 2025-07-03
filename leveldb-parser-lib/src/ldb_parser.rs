@@ -593,10 +593,10 @@ pub mod display {
                     _ => "Unknown",
                 };
 
-                let key_str = utils::bytes_to_ascii_with_hex(&record.key);
+                let key_str = utils::bytes_to_ascii_without_hex(&record.key);
                 let key_str = key_str.replace("\"", "\"\"");
 
-                let value_str = utils::bytes_to_ascii_with_hex(&record.value);
+                let value_str = utils::bytes_to_ascii_without_hex(&record.value);
                 let value_str = value_str.replace("\"", "\"\"");
 
                 writeln!(
