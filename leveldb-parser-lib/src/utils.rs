@@ -29,7 +29,7 @@ pub fn bytes_to_ascii(bytes: &[u8]) -> String {
     bytes
         .iter()
         .map(|&b| {
-            if b.is_ascii_graphic() || b == b' ' {
+            if b.is_ascii_graphic() || b == 0x20 {
                 b as char
             } else {
                 '.'
@@ -38,11 +38,11 @@ pub fn bytes_to_ascii(bytes: &[u8]) -> String {
         .collect()
 }
 
-pub fn bytes_to_ascii_with_hex(bytes: &[u8]) -> String {
+pub fn bytes_to_latin1_with_hex(bytes: &[u8]) -> String {
     bytes
         .iter()
         .map(|&b| {
-            if b.is_ascii_graphic() || b == b' ' {
+            if b.is_ascii_graphic() || b == 0x20 || b >= 0xA0 {
                 (b as char).to_string()
             } else {
                 format!("\\x{:02X}", b)
@@ -51,11 +51,11 @@ pub fn bytes_to_ascii_with_hex(bytes: &[u8]) -> String {
         .collect()
 }
 
-pub fn bytes_to_ascii_without_hex(bytes: &[u8]) -> String {
+pub fn bytes_to_latin1_without_hex(bytes: &[u8]) -> String {
     bytes
         .iter()
         .filter_map(|&b| {
-            if b.is_ascii_graphic() || b == b' ' {
+            if b.is_ascii_graphic() || b == 0x20 || b >= 0xA0 {
                 Some(b as char)
             } else {
                 None

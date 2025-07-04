@@ -178,7 +178,7 @@ pub mod display {
                 writeln!(
                     io::stdout(),
                     "[1] Comparator: {}",
-                    utils::bytes_to_ascii_with_hex(value)
+                    utils::bytes_to_latin1_with_hex(value)
                 )
             }
             ManifestEntry::LogNumber(log_no) => {
@@ -200,7 +200,7 @@ pub mod display {
                     io::stdout(),
                     "[5] CompactPointer: Level: {}, Key: {} @ {} : {}",
                     level,
-                    utils::bytes_to_ascii_with_hex(key),
+                    utils::bytes_to_latin1_with_hex(key),
                     seq,
                     state
                 )
@@ -230,10 +230,10 @@ pub mod display {
                     level,
                     file_no,
                     file_size,
-                    utils::bytes_to_ascii_with_hex(sm_key),
+                    utils::bytes_to_latin1_with_hex(sm_key),
                     sm_seq,
                     sm_state,
-                    utils::bytes_to_ascii_with_hex(lg_key),
+                    utils::bytes_to_latin1_with_hex(lg_key),
                     lg_seq,
                     lg_state
                 )
@@ -255,7 +255,7 @@ pub mod display {
             for entry in &block.entries {
                 let (tag, value) = match entry {
                     ManifestEntry::Comparator(value) => {
-                        ("Comparator", utils::bytes_to_ascii_with_hex(value))
+                        ("Comparator", utils::bytes_to_latin1_with_hex(value))
                     }
                     ManifestEntry::LogNumber(log_no) => ("LogNumber", format!("{}", log_no)),
                     ManifestEntry::NextFileNumber(next_file_no) => {
@@ -272,7 +272,7 @@ pub mod display {
                         format!(
                             "Level: {}, Key: {} @ {} : {}",
                             level,
-                            utils::bytes_to_ascii_with_hex(key),
+                            utils::bytes_to_latin1_with_hex(key),
                             seq,
                             state
                         ),
@@ -297,10 +297,10 @@ pub mod display {
                             level,
                             file_no,
                             file_size,
-                            utils::bytes_to_ascii_with_hex(sm_key),
+                            utils::bytes_to_latin1_with_hex(sm_key),
                             sm_seq,
                             sm_state,
-                            utils::bytes_to_ascii_with_hex(lg_key),
+                            utils::bytes_to_latin1_with_hex(lg_key),
                             lg_seq,
                             lg_state
                         ),

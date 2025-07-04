@@ -126,7 +126,7 @@ pub fn parse_file(file_path: &str) -> io::Result<LdbFile> {
             record.block_handle.offset,
             record.block_handle.size,
         )?;
-        let name = utils::bytes_to_ascii_with_hex(&record.key);
+        let name = utils::bytes_to_latin1_with_hex(&record.key);
         let bloom_filter = if name == "filter.leveldb.BuiltinBloomFilter2" {
             Some(parse_bloom_filter_block(&meta_raw.data)?)
         } else {
@@ -420,7 +420,7 @@ pub mod display {
             writeln!(
                 io::stdout(),
                 "FilterName: {}\nBlockHandle: Offset: {}, Size: {}",
-                utils::bytes_to_ascii_with_hex(&record.key),
+                utils::bytes_to_latin1_with_hex(&record.key),
                 record.block_handle.offset,
                 record.block_handle.size
             )?;
@@ -463,7 +463,7 @@ pub mod display {
             writeln!(
                 io::stdout(),
                 "SeparatorKey: {}\nBlockHandle: Offset: {}, Size: {}",
-                utils::bytes_to_ascii_with_hex(&record.key),
+                utils::bytes_to_latin1_with_hex(&record.key),
                 record.block_handle.offset,
                 record.block_handle.size
             )?;
@@ -511,14 +511,14 @@ pub mod display {
             block_offset + record.entry.key_offset,
             record.entry.shared_len,
             record.entry.inline_len,
-            utils::bytes_to_ascii_with_hex(&record.key),
+            utils::bytes_to_latin1_with_hex(&record.key),
         )?;
         writeln!(
             io::stdout(),
             "Val (Offset: {}, Size: {}): '{}'",
             block_offset + record.entry.val_offset,
             record.entry.value_len,
-            utils::bytes_to_ascii_with_hex(&record.value)
+            utils::bytes_to_latin1_with_hex(&record.value)
         )?;
 
         Ok(())
@@ -593,10 +593,10 @@ pub mod display {
                     _ => "Unknown",
                 };
 
-                let key_str = utils::bytes_to_ascii_without_hex(&record.key);
+                let key_str = utils::bytes_to_latin1_without_hex(&record.key);
                 let key_str = key_str.replace("\"", "\"\"");
 
-                let value_str = utils::bytes_to_ascii_without_hex(&record.value);
+                let value_str = utils::bytes_to_latin1_without_hex(&record.value);
                 let value_str = value_str.replace("\"", "\"\"");
 
                 writeln!(
@@ -637,9 +637,9 @@ pub mod export {
                     _ => "Unknown",
                 };
 
-                let key_str = utils::bytes_to_ascii_without_hex(&record.key).replace("\"", "\"\"");
+                let key_str = utils::bytes_to_latin1_without_hex(&record.key).replace("\"", "\"\"");
                 let value_str =
-                    utils::bytes_to_ascii_without_hex(&record.value).replace("\"", "\"\"");
+                    utils::bytes_to_latin1_without_hex(&record.value).replace("\"", "\"\"");
 
                 csv.push_str(&format!(
                     "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
