@@ -34,7 +34,7 @@ const gridOptions = {
         { field: "Cr", headerName: "CRC32", flex: 0.5, minWidth: 80 },
         { field: "St", headerName: "State", flex: 0.5, minWidth: 70 },
         { field: "BO", headerName: "Block Offset", flex: 0.5, minWidth: 110 },
-        { field: "C", headerName: "Compressed", flex: 0.5, minWidth: 120, cellStyle: { display: 'flex', justifyContent: 'center' } },
+        { field: "C", headerName: "Compressed", flex: 0.5, minWidth: 120, cellStyle: { display: 'flex', justifyContent: 'center', pointerEvents: 'none' } },
         { field: "F", headerName: "File", flex: 0.5, minWidth: 110 },
     ],
     rowData: [],
