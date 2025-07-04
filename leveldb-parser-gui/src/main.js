@@ -1,6 +1,7 @@
 const { getCurrentWebview } = window.__TAURI__.webview
 const { invoke } = window.__TAURI__.core
 const { listen } = window.__TAURI__.event
+const { writeText, readText } = window.__TAURI__.clipboardManager
 
 const overlay = document.getElementById('drop-overlay')
 
@@ -20,6 +21,7 @@ function handleDrop(file_paths) {
 }
 
 // ag-grid ---------------------------------------------------------------------
+// let focusedCell = null
 const gridOptions = {
     columnDefs: [
         {
@@ -37,13 +39,20 @@ const gridOptions = {
         { field: "C", headerName: "Compressed", flex: 0.5, minWidth: 120, cellStyle: { display: 'flex', justifyContent: 'center', pointerEvents: 'none' } },
         { field: "F", headerName: "File", flex: 0.5, minWidth: 110 },
     ],
-    rowData: [],
+    rowData: []
+    // onCellFocused: (e) => {
+    //     if (e.rowIndex != null && e.column != null) {
+    //         const rowNode = e.api.getDisplayedRowAtIndex(e.rowIndex)
+    //         const colId = e.column.getColId()
+    //         focusedCell = rowNode && rowNode.data ? rowNode.data[colId] : null
+    //     }
+    // }
 }
 
 const myGridElement = document.querySelector('#myGrid')
 const gridApi = agGrid.createGrid(myGridElement, gridOptions)
 
-// -----------------------------------------------------------------------------
+// listener --------------------------------------------------------------------
 listen('ldb_csv', e => {
     const csv = e.payload
     const [headerLine, ...lines] = csv.trim().split('\n')
@@ -61,10 +70,23 @@ listen('ldb_csv', e => {
         })
         return obj
     })
-
-    console.log(rowData)
     gridApi.setGridOption('rowData', rowData)
 })
+
+// copy to clipboard
+document.addEventListener('keydown', async (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        e.preventDefault()
+        const focusedCell = getFocusedCellValue(gridApi)
+        await writeText(focusedCell)
+    }
+})
+
+function getFocusedCellValue(gridApi) {
+    const focusedCell = gridApi.getFocusedCell()
+    const rowNode = gridApi.getDisplayedRowAtIndex(focusedCell.rowIndex)
+    return rowNode.data[focusedCell.column.getColId()]
+}
 
 // helper ----------------------------------------------------------------------
 function parseCsvLine(line) {
