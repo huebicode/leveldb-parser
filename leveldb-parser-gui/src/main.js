@@ -21,32 +21,29 @@ function handleDrop(file_paths) {
 }
 
 // ag-grid ---------------------------------------------------------------------
-// let focusedCell = null
 const gridOptions = {
     columnDefs: [
         {
             field: "Seq",
             comparator: (valueA, valueB) => valueA - valueB,
-            headerName: "Seq.#",
-            flex: 0.5,
-            minWidth: 70,
+            headerName: "Seq. #",
+            flex: 0.4,
+            minWidth: 40,
         },
         { field: "K", headerName: "Key", flex: 2, minWidth: 100 },
         { field: "V", headerName: "Value", flex: 5, minWidth: 100 },
-        { field: "Cr", headerName: "CRC32", flex: 0.5, minWidth: 80 },
-        { field: "St", headerName: "State", flex: 0.5, minWidth: 70 },
-        { field: "BO", headerName: "Block Offset", flex: 0.5, minWidth: 110 },
-        { field: "C", headerName: "Compressed", flex: 0.5, minWidth: 120, cellStyle: { display: 'flex', justifyContent: 'center', pointerEvents: 'none' } },
-        { field: "F", headerName: "File", flex: 0.5, minWidth: 110 },
+        { field: "Cr", headerName: "CRC32", flex: 0.4, minWidth: 40 },
+        { field: "St", headerName: "State", flex: 0.4, minWidth: 40 },
+        { field: "BO", headerName: "Block Offset", flex: 0.4, minWidth: 90 },
+        { field: "C", headerName: "Compressed", flex: 0.4, minWidth: 90, cellStyle: { pointerEvents: 'none' } },
+        { field: "F", headerName: "File", flex: 0.4, minWidth: 80 },
     ],
-    rowData: []
-    // onCellFocused: (e) => {
-    //     if (e.rowIndex != null && e.column != null) {
-    //         const rowNode = e.api.getDisplayedRowAtIndex(e.rowIndex)
-    //         const colId = e.column.getColId()
-    //         focusedCell = rowNode && rowNode.data ? rowNode.data[colId] : null
-    //     }
-    // }
+    defaultColDef: {
+        filter: true
+    },
+    rowData: [],
+    overlayNoRowsTemplate: 'Drop LevelDB folder or file to parse',
+    animateRows: false,
 }
 
 const myGridElement = document.querySelector('#myGrid')

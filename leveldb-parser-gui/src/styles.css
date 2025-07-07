@@ -1,9 +1,30 @@
+@font-face {
+    font-family: 'Roboto';
+    src: url(./assets/Roboto.ttf);
+}
+
 *,
 *::before,
 **::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+}
+
+body {
+    --ag-font-family: 'Roboto';
+    --ag-font-size: 12px;
+    --ag-spacing: 1px;
+
+    --ag-wrapper-border-radius: 0;
+
+    --ag-checkbox-border-radius: 0;
+    --ag-checkbox-border-width: 1px;
+
+    --ag-checkbox-unchecked-border-color: rgba(0, 0, 0, 0.5);
+    --ag-checkbox-checked-border-color: rgba(0, 0, 0, 1);
+    --ag-checkbox-checked-shape-color: rgba(0, 0, 0, 1);
+    --ag-checkbox-checked-background-color: transparent;
 }
 
 #drop-overlay {
@@ -19,9 +40,4 @@
 #drop-overlay.active {
     opacity: 1;
     pointer-events: auto;
-}
-
-#output {
-    white-space: pre-line;
-    font-family: monospace;
 }
