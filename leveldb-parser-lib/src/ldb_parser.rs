@@ -627,14 +627,14 @@ pub mod export {
             let crc_valid = if data_block.raw_block.crc_valid {
                 "valid"
             } else {
-                "failed"
+                "failed!"
             };
 
             for record in &data_block.records {
                 let state_str = match record.state {
-                    0 => "Deleted",
-                    1 => "Live",
-                    _ => "Unknown",
+                    0 => "deleted",
+                    1 => "live",
+                    _ => "unknown",
                 };
 
                 let key_str = utils::bytes_to_latin1_without_hex(&record.key).replace("\"", "\"\"");
