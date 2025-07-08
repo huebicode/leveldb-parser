@@ -17,6 +17,7 @@ await getCurrentWebview().onDragDropEvent((e) => {
 })
 
 function handleDrop(file_paths) {
+    gridApi.setGridOption('loading', true)
     invoke('process_dropped_files', { paths: file_paths })
 }
 
@@ -39,10 +40,12 @@ const gridOptions = {
         { field: "F", headerName: "File", flex: 0.4, minWidth: 80 },
     ],
     defaultColDef: {
-        filter: true
+        filter: true,
+        suppressMenu: false,
     },
     rowData: [],
-    overlayNoRowsTemplate: 'Drop LevelDB folder or file to parse',
+    overlayNoRowsTemplate: '<div style="border: 2px dashed grey; padding: 66px; border-radius: 8px; font-weight: bold;">Drop LevelDB folder or file to parse</div>',
+    overlayLoadingTemplate: '<p style="font-weight: bold; color: orangered;">Loading...</p>',
     animateRows: false,
 }
 
@@ -68,6 +71,7 @@ listen('ldb_csv', e => {
         return obj
     })
     gridApi.setGridOption('rowData', rowData)
+    gridApi.setGridOption('loading', false)
 })
 
 // copy to clipboard
@@ -84,6 +88,26 @@ function getFocusedCellValue(gridApi) {
     const rowNode = gridApi.getDisplayedRowAtIndex(focusedCell.rowIndex)
     return rowNode.data[focusedCell.column.getColId()]
 }
+
+// global search (quick filter)
+const filterTextBox = document.querySelector('#filter-text-box')
+let searchTimeout = null
+
+filterTextBox.addEventListener('input', function () {
+    filterTextBox.classList.add('searching')
+    gridApi.setGridOption('loading', true)
+
+    // debounce
+    if (searchTimeout) {
+        clearTimeout(searchTimeout)
+    }
+
+    searchTimeout = setTimeout(() => {
+        gridApi.setGridOption('quickFilterText', this.value)
+        gridApi.setGridOption('loading', false)
+        filterTextBox.classList.remove('searching')
+    }, 300)
+})
 
 // helper ----------------------------------------------------------------------
 function parseCsvLine(line) {

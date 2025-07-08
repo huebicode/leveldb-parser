@@ -30,14 +30,18 @@ body {
 #drop-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(128, 128, 128, 0.5);
+    background: rgba(93, 157, 233, 0.3);
     z-index: 9999;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s;
+
+    &.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
 }
 
-#drop-overlay.active {
-    opacity: 1;
-    pointer-events: auto;
+#filter-text-box.searching {
+    outline: 2px solid orangered;
 }
