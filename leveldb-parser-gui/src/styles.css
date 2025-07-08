@@ -45,3 +45,7 @@ body {
 #filter-text-box.searching {
     outline: 2px solid orangered;
 }
+
+.ag-icon-filter {
+    margin-right: 2px;
+}

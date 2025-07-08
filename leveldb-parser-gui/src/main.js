@@ -41,12 +41,19 @@ const gridOptions = {
     ],
     defaultColDef: {
         filter: true,
-        suppressMenu: false,
     },
     rowData: [],
     overlayNoRowsTemplate: '<div style="border: 2px dashed grey; padding: 66px; border-radius: 8px; font-weight: bold;">Drop LevelDB folder or file to parse</div>',
     overlayLoadingTemplate: '<p style="font-weight: bold; color: orangered;">Loading...</p>',
     animateRows: false,
+    getRowStyle: params => {
+        if (params.data && params.data.Cr && params.data.Cr.includes('failed')) {
+            return { color: 'red' }
+        } else if (params.data && params.data.St && params.data.St.includes('deleted')) {
+            return { backgroundColor: '#f2f2f2' }
+        }
+        return null
+    }
 }
 
 const myGridElement = document.querySelector('#myGrid')
