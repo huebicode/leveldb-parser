@@ -65,7 +65,7 @@ listen('ldb_csv', e => {
     const [headerLine, ...lines] = csv.trim().split('\n')
     const headers = parseCsvLine(headerLine)
 
-    const rowData = lines.map(line => {
+    const newRowData = lines.map(line => {
         const values = parseCsvLine(line)
         const obj = {}
         headers.forEach((header, idx) => {
@@ -77,7 +77,11 @@ listen('ldb_csv', e => {
         })
         return obj
     })
-    gridApi.setGridOption('rowData', rowData)
+
+    const currentRowData = gridApi.getGridOption('rowData') || []
+    const combinedRowData = [...currentRowData, ...newRowData]
+
+    gridApi.setGridOption('rowData', combinedRowData)
     gridApi.setGridOption('loading', false)
 })
 
