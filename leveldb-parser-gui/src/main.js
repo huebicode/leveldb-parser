@@ -120,6 +120,11 @@ filterTextBox.addEventListener('input', function () {
     }, 300)
 })
 
+// clear button
+document.querySelector('#clear-button').addEventListener('click', () => {
+    window.location.reload()
+})
+
 // helper ----------------------------------------------------------------------
 function parseCsvLine(line) {
     const result = []
