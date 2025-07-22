@@ -66,7 +66,7 @@ const recordsGridElem = document.querySelector('#records-grid')
 const recordsGrid = agGrid.createGrid(recordsGridElem, gridOptionsRecords)
 
 // listener --------------------------------------------------------------------
-listen('ldb_csv', e => {
+listen('records_csv', e => {
     const csv = e.payload
     const [headerLine, ...lines] = csv.trim().split('\n')
     const headers = parseCsvLine(headerLine)

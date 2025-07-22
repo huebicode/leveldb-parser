@@ -17,6 +17,7 @@ pub struct LogFile {
 pub struct Block {
     pub offset: u64,
     pub crc: u32,
+    pub crc_valid: bool,
     pub data_len: u16,
     pub block_type: u8,
     pub data: Vec<u8>,
@@ -97,9 +98,12 @@ pub fn read_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
     let mut data = vec![0; data_len as usize];
     reader.read_exact(&mut data)?;
 
+    let crc_valid = utils::crc_verified(crc, &data, block_type, false);
+
     Ok(Block {
         offset,
         crc,
+        crc_valid,
         data_len,
         block_type,
         data,
@@ -259,7 +263,7 @@ pub mod display {
             io::stdout(),
             "------------------- Header -------------------"
         )?;
-        if utils::crc_verified(block.crc, &block.data, block.block_type, false) {
+        if block.crc_valid {
             writeln!(io::stdout(), "CRC32C: {:02X} (verified)", block.crc)?;
         } else {
             writeln!(
@@ -370,5 +374,56 @@ pub mod display {
         }
 
         Ok(())
+    }
+}
+
+pub mod export {
+    use super::*;
+
+    pub fn csv_string(log: &LogFile, filename: &str) -> String {
+        let mut csv = String::new();
+        // Header
+        csv.push_str("\"Seq\",\"K\",\"V\",\"Cr\",\"St\",\"BO\",\"C\",\"F\"\n");
+
+        for batch in &log.batches {
+            // find the block that contains this batch
+            let containing_block = log.blocks.iter().find(|block| block.offset == batch.offset);
+
+            let crc_status = if let Some(block) = containing_block {
+                if block.crc_valid { "valid" } else { "failed!" }
+            } else {
+                "unknown" // shouldn't happen
+            };
+
+            for record in &batch.records {
+                let state_str = match record.state {
+                    0 => "deleted",
+                    1 => "live",
+                    _ => "unknown",
+                };
+
+                let key_str = utils::bytes_to_latin1_without_hex(&record.key).replace("\"", "\"\"");
+
+                let value_str = if let Some(value) = &record.value {
+                    utils::bytes_to_latin1_without_hex(value).replace("\"", "\"\"")
+                } else {
+                    "".to_string()
+                };
+
+                csv.push_str(&format!(
+                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
+                    record.seq,
+                    key_str,
+                    value_str,
+                    crc_status,
+                    state_str,
+                    batch.offset,
+                    "false", // .log files don't use compression
+                    filename
+                ));
+            }
+        }
+
+        csv
     }
 }
