@@ -25,6 +25,8 @@ body {
     --ag-checkbox-checked-border-color: rgba(0, 0, 0, 1);
     --ag-checkbox-checked-shape-color: rgba(0, 0, 0, 1);
     --ag-checkbox-checked-background-color: transparent;
+
+    --border-color: rgba(0, 0, 33, 0.5);
 }
 
 #drop-overlay {
@@ -42,10 +44,82 @@ body {
     }
 }
 
+#drop-area-wrapper {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#drop-area {
+    width: 300px;
+    height: 100px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 66px;
+    font-weight: bold;
+    border: 2px dashed grey;
+    border-radius: 8px;
+}
+
 #filter-text-box.searching {
     outline: 2px solid orangered;
 }
 
 .ag-icon-filter {
     margin-right: 2px;
+}
+
+#top-bar {
+    display: flex;
+    justify-content: space-between;
+}
+
+#tabs {
+    display: flex;
+    position: relative;
+    margin-bottom: -1px;
+}
+
+.tab-button {
+    font-size: var(--ag-font-size);
+    font-weight: bold;
+    border: 1px solid var(--border-color);
+    border-bottom: transparent;
+    border-right: transparent;
+
+    background-color: rgba(0, 0, 33, 0.15);
+    padding: 3px 10px;
+    margin: 0;
+}
+
+.tab-button:not(.active-tab-button):hover {
+    background-color: white;
+    border-bottom: 1px solid var(--border-color);
+    margin-top: -1px;
+}
+
+.tab-button:last-child {
+    border-right: 1px solid var(--border-color);
+}
+
+.active-tab-button {
+    border-top: 2px solid #2196f3;
+    background-color: white;
+    color: black;
+}
+
+.tab-content {
+    border: 1px solid var(--border-color);
+    display: none;
+}
+
+.no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }

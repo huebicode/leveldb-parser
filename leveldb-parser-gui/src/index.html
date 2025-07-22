@@ -11,14 +11,42 @@
 </head>
 
 <body>
-  <button id="clear-button">clear</button>
-  <div id="search-container">
-    <input type="text" id="filter-text-box" placeholder="Search all columns..." />
+  <div id="drop-overlay"></div>
+
+  <div id="drop-area-wrapper">
+    <div id="drop-area" class="no-select">Drop LevelDB folder or file to parse</div>
   </div>
 
-  <div id="myGrid" style="height: 95vh"></div>
 
-  <div id="drop-overlay"></div>
+  <div id="wrapper" style="display: none;">
+
+    <div id="top-bar">
+      <div id="tabs">
+        <button id="records-button" class="tab-button">Records</button>
+        <button id="manifest-button" class="tab-button">Manifest</button>
+        <button id="log-button" class="tab-button">Log</button>
+      </div>
+
+      <div id="search-container">
+        <input type="text" id="filter-text-box" placeholder="Search all columns..." />
+      </div>
+
+      <button id="clear-button">clear</button>
+    </div>
+
+    <div id="records" class="tab-content">
+      <div id="records-grid" style="height: 95vh"></div>
+    </div>
+
+    <div id="manifest" class="tab-content">
+      <div id="manifest-grid">Manifest</div>
+    </div>
+
+    <div id="log" class="tab-content">
+      <div id="log-grid">Log</div>
+    </div>
+  </div>
+
 </body>
 
 </html>

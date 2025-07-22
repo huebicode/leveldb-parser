@@ -4,6 +4,11 @@ const { listen } = window.__TAURI__.event
 const { writeText, readText } = window.__TAURI__.clipboardManager
 
 const overlay = document.getElementById('drop-overlay')
+const dropAreaWrapper = document.getElementById('drop-area-wrapper')
+const contentWrapper = document.getElementById('wrapper')
+const recordsButton = document.getElementById('records-button')
+const manifestButton = document.getElementById('manifest-button')
+const logButton = document.getElementById('log-button')
 
 await getCurrentWebview().onDragDropEvent((e) => {
     if (e.payload.type === 'over') {
@@ -17,12 +22,14 @@ await getCurrentWebview().onDragDropEvent((e) => {
 })
 
 function handleDrop(file_paths) {
-    gridApi.setGridOption('loading', true)
+    recordsGrid.setGridOption('loading', true)
     invoke('process_dropped_files', { paths: file_paths })
+    dropAreaWrapper.style.display = 'none'
+    contentWrapper.style.display = 'block'
 }
 
 // ag-grid ---------------------------------------------------------------------
-const gridOptions = {
+const gridOptionsRecords = {
     columnDefs: [
         {
             field: "Seq",
@@ -43,21 +50,20 @@ const gridOptions = {
         filter: true,
     },
     rowData: [],
-    overlayNoRowsTemplate: '<div style="border: 2px dashed grey; padding: 66px; border-radius: 8px; font-weight: bold;">Drop LevelDB folder or file to parse</div>',
     overlayLoadingTemplate: '<p style="font-weight: bold; color: orangered;">Loading...</p>',
     animateRows: false,
     getRowStyle: params => {
         if (params.data && params.data.Cr && params.data.Cr.includes('failed')) {
             return { color: 'red' }
         } else if (params.data && params.data.St && params.data.St.includes('deleted')) {
-            return { backgroundColor: '#f2f2f2' }
+            return { backgroundColor: '#f2f2f6' }
         }
         return null
     }
 }
 
-const myGridElement = document.querySelector('#myGrid')
-const gridApi = agGrid.createGrid(myGridElement, gridOptions)
+const recordsGridElem = document.querySelector('#records-grid')
+const recordsGrid = agGrid.createGrid(recordsGridElem, gridOptionsRecords)
 
 // listener --------------------------------------------------------------------
 listen('ldb_csv', e => {
@@ -78,18 +84,19 @@ listen('ldb_csv', e => {
         return obj
     })
 
-    const currentRowData = gridApi.getGridOption('rowData') || []
+    const currentRowData = recordsGrid.getGridOption('rowData') || []
     const combinedRowData = [...currentRowData, ...newRowData]
 
-    gridApi.setGridOption('rowData', combinedRowData)
-    gridApi.setGridOption('loading', false)
+    recordsGrid.setGridOption('rowData', combinedRowData)
+    showTab('records')
+    recordsGrid.setGridOption('loading', false)
 })
 
 // copy to clipboard
 document.addEventListener('keydown', async (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
         e.preventDefault()
-        const focusedCell = getFocusedCellValue(gridApi)
+        const focusedCell = getFocusedCellValue(recordsGrid)
         await writeText(focusedCell)
     }
 })
@@ -106,7 +113,7 @@ let searchTimeout = null
 
 filterTextBox.addEventListener('input', function () {
     filterTextBox.classList.add('searching')
-    gridApi.setGridOption('loading', true)
+    recordsGrid.setGridOption('loading', true)
 
     // debounce
     if (searchTimeout) {
@@ -114,8 +121,8 @@ filterTextBox.addEventListener('input', function () {
     }
 
     searchTimeout = setTimeout(() => {
-        gridApi.setGridOption('quickFilterText', this.value)
-        gridApi.setGridOption('loading', false)
+        recordsGrid.setGridOption('quickFilterText', this.value)
+        recordsGrid.setGridOption('loading', false)
         filterTextBox.classList.remove('searching')
     }, 300)
 })
@@ -124,6 +131,35 @@ filterTextBox.addEventListener('input', function () {
 document.querySelector('#clear-button').addEventListener('click', () => {
     window.location.reload()
 })
+
+// tab switching
+recordsButton.addEventListener('click', () => {
+    showTab('records')
+})
+
+manifestButton.addEventListener('click', () => {
+    showTab('manifest')
+})
+
+logButton.addEventListener('click', () => {
+    showTab('log')
+})
+
+function showTab(tabId) {
+    const tabs = ['records', 'manifest', 'log']
+    tabs.forEach(id => {
+        const el = document.getElementById(id)
+        if (el) {
+            el.style.display = (id === tabId) ? 'block' : 'none'
+        }
+    })
+
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.classList.remove('active-tab-button')
+    })
+
+    document.getElementById(`${tabId}-button`).classList.add('active-tab-button')
+}
 
 // helper ----------------------------------------------------------------------
 function parseCsvLine(line) {
