@@ -320,3 +320,92 @@ pub mod display {
         Ok(())
     }
 }
+
+pub mod export {
+    use super::*;
+
+    pub fn csv_string(manifest: &ManifestFile, filename: &str) -> String {
+        let mut csv = String::new();
+        // Header
+        csv.push_str("\"Tag\",\"TagValue\",\"CRC\",\"BlockOffset\",\"File\"\n");
+
+        for block in &manifest.blocks {
+            let crc_status = if block.block.crc_valid {
+                "valid"
+            } else {
+                "failed!"
+            };
+            let block_offset = block.block.offset;
+
+            for entry in &block.entries {
+                let (tag, value) = match entry {
+                    ManifestEntry::Comparator(value) => {
+                        ("Comparator", utils::bytes_to_latin1_with_hex(value))
+                    }
+                    ManifestEntry::LogNumber(log_no) => ("LogNumber", format!("{}", log_no)),
+                    ManifestEntry::NextFileNumber(next_file_no) => {
+                        ("NextFileNumber", format!("{}", next_file_no))
+                    }
+                    ManifestEntry::LastSeq(last_seq_no) => ("LastSeq", format!("{}", last_seq_no)),
+                    ManifestEntry::CompactPointer {
+                        level,
+                        key,
+                        seq,
+                        state,
+                    } => (
+                        "CompactPointer",
+                        format!(
+                            "Level: {}, Key: {} @ {} : {}",
+                            level,
+                            utils::bytes_to_latin1_with_hex(key),
+                            seq,
+                            state
+                        ),
+                    ),
+                    ManifestEntry::RemoveFile { level, file_no } => {
+                        ("RemoveFile", format!("Level: {}, No.: {}", level, file_no))
+                    }
+                    ManifestEntry::AddFile {
+                        level,
+                        file_no,
+                        file_size,
+                        sm_key,
+                        sm_seq,
+                        sm_state,
+                        lg_key,
+                        lg_seq,
+                        lg_state,
+                    } => (
+                        "AddFile",
+                        format!(
+                            "Level: {}, No.: {}, Size: {} Bytes, Key-Range: '{}' @ {} : {} .. '{}' @ {} : {}",
+                            level,
+                            file_no,
+                            file_size,
+                            utils::bytes_to_latin1_with_hex(sm_key),
+                            sm_seq,
+                            sm_state,
+                            utils::bytes_to_latin1_with_hex(lg_key),
+                            lg_seq,
+                            lg_state
+                        ),
+                    ),
+                    ManifestEntry::PrevLogNumber(prev_log_no) => {
+                        ("PrevLogNumber", format!("{}", prev_log_no))
+                    }
+                    ManifestEntry::Unknown(tag) => ("Unknown", format!("{:02X}", tag)),
+                };
+
+                // Escape quotes in the value
+                let escaped_value = value.replace("\"", "\"\"");
+
+                csv.push_str(&format!(
+                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
+                    tag, escaped_value, crc_status, block_offset, filename
+                ));
+            }
+        }
+
+        csv
+    }
+}

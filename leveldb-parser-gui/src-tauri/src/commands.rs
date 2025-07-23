@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 use tauri::Emitter;
 
-use leveldb_parser_lib::{ldb_parser, log_parser};
+use leveldb_parser_lib::{ldb_parser, log_parser, manifest_parser};
 
 #[tauri::command]
 pub fn process_dropped_files(window: tauri::Window, paths: Vec<String>) {
@@ -44,6 +44,19 @@ fn process_path(window: &tauri::Window, path: &Path) {
                         }
                     }
                     Err(e) => println!("Error parsing Log file {}: {:?}", path.display(), e),
+                }
+            } else if file_name.to_string_lossy().starts_with("MANIFEST-") {
+                match manifest_parser::parse_file(path.to_str().unwrap()) {
+                    Ok(manifest_file) => {
+                        let csv = manifest_parser::export::csv_string(
+                            &manifest_file,
+                            &file_name.to_string_lossy(),
+                        );
+                        if let Err(e) = window.emit("manifest_csv", csv) {
+                            println!("Error emitting Manifest CSV: {}", e);
+                        }
+                    }
+                    Err(e) => println!("Error parsing Manifest file {}: {:?}", path.display(), e),
                 }
             }
         }

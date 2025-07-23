@@ -9,6 +9,7 @@ const contentWrapper = document.getElementById('wrapper')
 const recordsButton = document.getElementById('records-button')
 const manifestButton = document.getElementById('manifest-button')
 const logButton = document.getElementById('log-button')
+const searchContainer = document.getElementById('search-container')
 
 await getCurrentWebview().onDragDropEvent((e) => {
     if (e.payload.type === 'over') {
@@ -28,7 +29,7 @@ function handleDrop(file_paths) {
     contentWrapper.style.display = 'block'
 }
 
-// ag-grid ---------------------------------------------------------------------
+// records-grid ----------------------------------------------------------------
 const gridOptionsRecords = {
     columnDefs: [
         {
@@ -42,7 +43,7 @@ const gridOptionsRecords = {
         { field: "V", headerName: "Value", flex: 5, minWidth: 100 },
         { field: "Cr", headerName: "CRC32", flex: 0.4, minWidth: 40 },
         { field: "St", headerName: "State", flex: 0.4, minWidth: 40 },
-        { field: "BO", headerName: "Block Offset", flex: 0.4, minWidth: 90 },
+        { field: "BO", comparator: (valueA, valueB) => valueA - valueB, headerName: "Block Offset", flex: 0.4, minWidth: 90 },
         { field: "C", headerName: "Compressed", flex: 0.4, minWidth: 90, cellStyle: { pointerEvents: 'none' } },
         { field: "F", headerName: "File", flex: 0.4, minWidth: 80 },
     ],
@@ -64,6 +65,32 @@ const gridOptionsRecords = {
 
 const recordsGridElem = document.querySelector('#records-grid')
 const recordsGrid = agGrid.createGrid(recordsGridElem, gridOptionsRecords)
+
+// manifest-grid ---------------------------------------------------------------
+const gridOptionsManifest = {
+    columnDefs: [
+        { field: "Tag", flex: 0.5, minWidth: 100 },
+        { field: "TagValue", headerName: "Value", flex: 5, minWidth: 200 },
+        { field: "CRC", headerName: "CRC32", flex: 0.4, minWidth: 40 },
+        { field: "BlockOffset", headerName: "Block Offset", flex: 0.4, minWidth: 90 },
+        { field: "File", flex: 0.4, minWidth: 110 },
+    ],
+    defaultColDef: {
+        filter: true,
+    },
+    rowData: [],
+    overlayLoadingTemplate: '<p style="font-weight: bold; color: orangered;">Loading...</p>',
+    animateRows: false,
+    getRowStyle: params => {
+        if (params.data && params.data.CRC && params.data.CRC.includes('failed')) {
+            return { color: 'red' }
+        }
+        return null
+    }
+}
+
+const manifestGridElem = document.querySelector('#manifest-grid')
+const manifestGrid = agGrid.createGrid(manifestGridElem, gridOptionsManifest)
 
 // listener --------------------------------------------------------------------
 listen('records_csv', e => {
@@ -92,6 +119,26 @@ listen('records_csv', e => {
     recordsGrid.setGridOption('loading', false)
 })
 
+listen('manifest_csv', e => {
+    const csv = e.payload
+    const [headerLine, ...lines] = csv.trim().split('\n')
+    const headers = parseCsvLine(headerLine)
+
+    const rowData = lines.map(line => {
+        const values = parseCsvLine(line)
+        const obj = {}
+        headers.forEach((header, idx) => {
+            obj[header] = values[idx]
+        })
+        return obj
+    })
+
+    const currentRowData = manifestGrid.getGridOption('rowData') || []
+    const combinedRowData = [...currentRowData, ...rowData]
+
+    manifestGrid.setGridOption('rowData', combinedRowData)
+})
+
 // copy to clipboard
 document.addEventListener('keydown', async (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
@@ -113,18 +160,24 @@ let searchTimeout = null
 
 filterTextBox.addEventListener('input', function () {
     filterTextBox.classList.add('searching')
-    recordsGrid.setGridOption('loading', true)
 
-    // debounce
-    if (searchTimeout) {
-        clearTimeout(searchTimeout)
+    const activeTab = document.querySelector('.active-tab-button').id
+    const activeGrid = activeTab === 'records-button' ? recordsGrid : manifestGrid
+
+    if (activeTab === 'records-button' || activeTab === 'manifest-button') {
+        activeGrid.setGridOption('loading', true)
+
+        // debounce
+        if (searchTimeout) {
+            clearTimeout(searchTimeout)
+        }
+
+        searchTimeout = setTimeout(() => {
+            activeGrid.setGridOption('quickFilterText', this.value)
+            activeGrid.setGridOption('loading', false)
+            filterTextBox.classList.remove('searching')
+        }, 300)
     }
-
-    searchTimeout = setTimeout(() => {
-        recordsGrid.setGridOption('quickFilterText', this.value)
-        recordsGrid.setGridOption('loading', false)
-        filterTextBox.classList.remove('searching')
-    }, 300)
 })
 
 // clear button
@@ -159,6 +212,13 @@ function showTab(tabId) {
     })
 
     document.getElementById(`${tabId}-button`).classList.add('active-tab-button')
+
+    // hide search if not records or manifest
+    if (tabId === 'log') {
+        searchContainer.style.display = 'none'
+    } else {
+        searchContainer.style.display = 'block'
+    }
 }
 
 // helper ----------------------------------------------------------------------

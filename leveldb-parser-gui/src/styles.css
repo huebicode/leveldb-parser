@@ -27,6 +27,7 @@ body {
     --ag-checkbox-checked-background-color: transparent;
 
     --border-color: rgba(0, 0, 33, 0.5);
+    --blue: #2196f3;
 }
 
 #drop-overlay {
@@ -69,8 +70,16 @@ body {
     outline: 2px solid orangered;
 }
 
+.ag-header-row {
+    font-weight: bold;
+}
+
 .ag-icon-filter {
     margin-right: 2px;
+}
+
+.ag-sort-indicator-icon {
+    color: var(--blue);
 }
 
 #top-bar {
@@ -91,7 +100,7 @@ body {
     border-bottom: transparent;
     border-right: transparent;
 
-    background-color: rgba(0, 0, 33, 0.15);
+    background-color: rgba(0, 0, 33, 0.1);
     padding: 3px 10px;
     margin: 0;
 }
@@ -107,7 +116,7 @@ body {
 }
 
 .active-tab-button {
-    border-top: 2px solid #2196f3;
+    border-top: 2px solid var(--blue);
     background-color: white;
     color: black;
 }
