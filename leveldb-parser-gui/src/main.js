@@ -29,6 +29,21 @@ function handleDrop(file_paths) {
     contentWrapper.style.display = 'block'
 }
 
+const CUT_OFF_LEN = 300
+const largeValRenderer = (params) => {
+    if (!params.value) return ''
+
+    const fullValue = params.value
+    const isLarge = fullValue.length > CUT_OFF_LEN
+
+    if (!isLarge) return fullValue
+
+    const remainingChars = fullValue.length - CUT_OFF_LEN
+    const truncated = fullValue.substring(0, CUT_OFF_LEN) + `<span style="color: red;">[+${remainingChars.toLocaleString()} Chars...]</span>`
+
+    return truncated
+}
+
 // records-grid ----------------------------------------------------------------
 const gridOptionsRecords = {
     columnDefs: [
@@ -40,7 +55,7 @@ const gridOptionsRecords = {
             minWidth: 40,
         },
         { field: "K", headerName: "Key", flex: 2, minWidth: 100 },
-        { field: "V", headerName: "Value", flex: 5, minWidth: 100 },
+        { field: "V", headerName: "Value", flex: 5, minWidth: 100, cellRenderer: largeValRenderer },
         { field: "Cr", headerName: "CRC32", flex: 0.4, minWidth: 40 },
         { field: "St", headerName: "State", flex: 0.4, minWidth: 40 },
         { field: "BO", comparator: (valueA, valueB) => valueA - valueB, headerName: "Block Offset", flex: 0.4, minWidth: 90 },
