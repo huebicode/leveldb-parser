@@ -73,7 +73,7 @@ const gridOptionsManifest = {
         { field: "TagValue", headerName: "Value", flex: 5, minWidth: 200 },
         { field: "CRC", headerName: "CRC32", flex: 0.4, minWidth: 40 },
         { field: "BlockOffset", headerName: "Block Offset", flex: 0.4, minWidth: 90 },
-        { field: "File", flex: 0.4, minWidth: 110 },
+        { field: "File", flex: 0.4, minWidth: 115 },
     ],
     defaultColDef: {
         filter: true,
@@ -92,13 +92,32 @@ const gridOptionsManifest = {
 const manifestGridElem = document.querySelector('#manifest-grid')
 const manifestGrid = agGrid.createGrid(manifestGridElem, gridOptionsManifest)
 
+// log-text-grid ---------------------------------------------------------------
+const gridOptionsLogText = {
+    columnDefs: [
+        { field: "Date", flex: 0.3, minWidth: 150, sort: 'asc' },
+        { field: "ThreadId", headerName: "ThreadID", flex: 0.2, minWidth: 80 },
+        { field: "Msg", headerName: "Message", flex: 5, minWidth: 300 },
+        { field: "File", flex: 0.2, minWidth: 80 },
+    ],
+    defaultColDef: {
+        filter: true,
+    },
+    rowData: [],
+    overlayLoadingTemplate: '<p style="font-weight: bold; color: orangered;">Loading...</p>',
+    animateRows: false
+}
+
+const logTextGridElem = document.querySelector('#log-text-grid')
+const logTextGrid = agGrid.createGrid(logTextGridElem, gridOptionsLogText)
+
 // listener --------------------------------------------------------------------
 listen('records_csv', e => {
     const csv = e.payload
     const [headerLine, ...lines] = csv.trim().split('\n')
     const headers = parseCsvLine(headerLine)
 
-    const newRowData = lines.map(line => {
+    const rowData = lines.map(line => {
         const values = parseCsvLine(line)
         const obj = {}
         headers.forEach((header, idx) => {
@@ -112,10 +131,9 @@ listen('records_csv', e => {
     })
 
     const currentRowData = recordsGrid.getGridOption('rowData') || []
-    const combinedRowData = [...currentRowData, ...newRowData]
+    const combinedRowData = [...currentRowData, ...rowData]
 
     recordsGrid.setGridOption('rowData', combinedRowData)
-    showTab('records')
     recordsGrid.setGridOption('loading', false)
 })
 
@@ -137,6 +155,28 @@ listen('manifest_csv', e => {
     const combinedRowData = [...currentRowData, ...rowData]
 
     manifestGrid.setGridOption('rowData', combinedRowData)
+    manifestGrid.setGridOption('loading', false)
+})
+
+listen('log_text_csv', e => {
+    const csv = e.payload
+    const [headerLine, ...lines] = csv.trim().split('\n')
+    const headers = parseCsvLine(headerLine)
+
+    const rowData = lines.map(line => {
+        const values = parseCsvLine(line)
+        const obj = {}
+        headers.forEach((header, idx) => {
+            obj[header] = values[idx]
+        })
+        return obj
+    })
+
+    const currentRowData = logTextGrid.getGridOption('rowData') || []
+    const combinedRowData = [...currentRowData, ...rowData]
+
+    logTextGrid.setGridOption('rowData', combinedRowData)
+    logTextGrid.setGridOption('loading', false)
 })
 
 // copy to clipboard
