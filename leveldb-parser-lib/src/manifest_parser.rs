@@ -7,13 +7,13 @@ use crate::log_parser;
 use crate::utils;
 
 pub struct ManifestFile {
-    pub blocks: Vec<ManifestBlock>,
+    pub blocks: Vec<log_parser::Block>, // raw blocks
+    pub entries: Vec<ManifestEntrySet>, // logical entry sets
 }
 
-pub struct ManifestBlock {
-    pub block: log_parser::Block,
+pub struct ManifestEntrySet {
     pub entries: Vec<ManifestEntry>,
-    pub block_no: u64,
+    pub offset: u64,
 }
 
 pub enum ManifestEntry {
@@ -52,29 +52,50 @@ pub fn parse_file(file_path: &str) -> io::Result<ManifestFile> {
     let mut reader = BufReader::new(file);
 
     let mut blocks = Vec::new();
-    let mut block_no = 1;
+    let mut entries = Vec::new();
+    let mut partial_block_data = Vec::new();
+    let mut first_block_offset = 0;
 
     while reader.stream_position()? < file_size {
         let block = log_parser::read_block(&mut reader)?;
-        let entries = parse_block(&block)?;
 
-        blocks.push(ManifestBlock {
-            block,
-            entries,
-            block_no,
-        });
+        match block.block_type {
+            1 => {
+                // Full Block
+                let entry_set = parse_entries(&block.data, block.offset)?;
+                entries.push(entry_set);
+            }
+            2 => {
+                // First Block
+                first_block_offset = block.offset;
+                partial_block_data.clear();
+                partial_block_data.extend_from_slice(&block.data);
+            }
+            3 => {
+                // Middle Block
+                partial_block_data.extend_from_slice(&block.data);
+            }
+            4 => {
+                // Last Block
+                partial_block_data.extend_from_slice(&block.data);
+                let entry_set = parse_entries(&partial_block_data, first_block_offset)?;
+                entries.push(entry_set);
+                partial_block_data.clear();
+            }
+            _ => {} // Zero Block or Unknown Type - no entries
+        }
 
-        block_no += 1;
+        blocks.push(block);
     }
 
-    Ok(ManifestFile { blocks })
+    Ok(ManifestFile { blocks, entries })
 }
 
-fn parse_block(block: &log_parser::Block) -> io::Result<Vec<ManifestEntry>> {
-    let mut entries = Vec::new();
-    let mut cursor = Cursor::new(&block.data);
+fn parse_entries(data: &[u8], offset: u64) -> io::Result<ManifestEntrySet> {
+    let mut result_entries = Vec::new();
+    let mut cursor = Cursor::new(data);
 
-    while cursor.position() < block.data.len() as u64 {
+    while cursor.position() < data.len() as u64 {
         let tag = cursor.read_u8()?;
 
         let entry = match tag {
@@ -141,10 +162,13 @@ fn parse_block(block: &log_parser::Block) -> io::Result<Vec<ManifestEntry>> {
             _ => ManifestEntry::Unknown(tag),
         };
 
-        entries.push(entry);
+        result_entries.push(entry);
     }
 
-    Ok(entries)
+    Ok(ManifestEntrySet {
+        entries: result_entries,
+        offset,
+    })
 }
 
 pub mod display {
@@ -152,20 +176,40 @@ pub mod display {
     use std::io::Write;
 
     pub fn print_all(manifest: &ManifestFile) -> io::Result<()> {
-        for block in &manifest.blocks {
-            print_manifest_block(block)?;
+        let mut current_entry_idx = 0;
+
+        for (i, block) in manifest.blocks.iter().enumerate() {
+            log_parser::display::print_block_header(block, i as u64 + 1)?;
+
+            match block.block_type {
+                1 => {
+                    // Full block
+                    if current_entry_idx < manifest.entries.len() {
+                        print_entries(&manifest.entries[current_entry_idx])?;
+                        current_entry_idx += 1;
+                    }
+                }
+                4 => {
+                    // Last block
+                    if current_entry_idx < manifest.entries.len() {
+                        print_entries(&manifest.entries[current_entry_idx])?;
+                        current_entry_idx += 1;
+                    }
+                }
+                _ => {} // other block types
+            }
         }
+
         Ok(())
     }
 
-    pub fn print_manifest_block(block: &ManifestBlock) -> io::Result<()> {
-        log_parser::display::print_block_header(&block.block, block.block_no)?;
-
+    fn print_entries(entry_set: &ManifestEntrySet) -> io::Result<()> {
         writeln!(
             io::stdout(),
-            "-------------------- Tags --------------------"
+            "\n-------------------- Tags --------------------"
         )?;
-        for entry in &block.entries {
+
+        for entry in &entry_set.entries {
             print_entry(entry)?;
         }
 
@@ -251,8 +295,8 @@ pub mod display {
         // Header
         writeln!(io::stdout(), "\"tag\",\"value\"")?;
 
-        for block in &manifest.blocks {
-            for entry in &block.entries {
+        for entry_set in &manifest.entries {
+            for entry in &entry_set.entries {
                 let (tag, value) = match entry {
                     ManifestEntry::Comparator(value) => {
                         ("Comparator", utils::bytes_to_latin1_with_hex(value))
@@ -329,15 +373,18 @@ pub mod export {
         // Header
         csv.push_str("\"Tag\",\"TagValue\",\"CRC\",\"BlockOffset\",\"File\"\n");
 
-        for block in &manifest.blocks {
-            let crc_status = if block.block.crc_valid {
-                "valid"
-            } else {
-                "failed!"
-            };
-            let block_offset = block.block.offset;
+        let block_crc_map: std::collections::HashMap<u64, bool> = manifest
+            .blocks
+            .iter()
+            .map(|block| (block.offset, block.crc_valid))
+            .collect();
 
-            for entry in &block.entries {
+        for entry_set in &manifest.entries {
+            let block_offset = entry_set.offset;
+            let crc_valid = block_crc_map.get(&block_offset).copied().unwrap_or(false);
+            let crc_status = if crc_valid { "valid" } else { "failed!" };
+
+            for entry in &entry_set.entries {
                 let (tag, value) = match entry {
                     ManifestEntry::Comparator(value) => {
                         ("Comparator", utils::bytes_to_latin1_with_hex(value))
