@@ -68,6 +68,8 @@ const gridOptionsRecords = {
     rowData: [],
     overlayLoadingTemplate: '<p style="font-weight: bold; color: orangered;">Loading...</p>',
     animateRows: false,
+    rowBuffer: 50,
+    debounceVerticalScrollbar: true,
     getRowStyle: params => {
         if (params.data && params.data.Cr && params.data.Cr.includes('failed')) {
             return { color: 'red' }
