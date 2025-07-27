@@ -6,10 +6,36 @@ const { writeText, readText } = window.__TAURI__.clipboardManager
 const overlay = document.getElementById('drop-overlay')
 const dropAreaWrapper = document.getElementById('drop-area-wrapper')
 const contentWrapper = document.getElementById('wrapper')
+
 const recordsButton = document.getElementById('records-button')
 const manifestButton = document.getElementById('manifest-button')
 const logButton = document.getElementById('log-button')
+
 const searchContainer = document.getElementById('search-container')
+
+// helper ----------------------------------------------------------------------
+function parseCsvLine(line) {
+    const result = []
+    let current = ''
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i]
+        if (char === '"' && line[i + 1] === '"') {
+            current += '"'
+            i++ // skip next quote
+        } else if (char === '"') {
+            inQuotes = !inQuotes
+        } else if (char === ',' && !inQuotes) {
+            result.push(current)
+            current = ''
+        } else {
+            current += char
+        }
+    }
+    result.push(current)
+    return result
+}
 
 await getCurrentWebview().onDragDropEvent((e) => {
     if (e.payload.type === 'over') {
@@ -23,8 +49,10 @@ await getCurrentWebview().onDragDropEvent((e) => {
 })
 
 function handleDrop(file_paths) {
-    recordsGrid.setGridOption('loading', true)
     invoke('process_dropped_files', { paths: file_paths })
+}
+
+function hideDropArea() {
     dropAreaWrapper.style.display = 'none'
     contentWrapper.style.display = 'block'
 }
@@ -67,6 +95,7 @@ const gridOptionsRecords = {
     },
     rowData: [],
     overlayLoadingTemplate: '<p style="font-weight: bold; color: orangered;">Loading...</p>',
+    overlayNoRowsTemplate: '<p style="font-weight: bold; color: orangered;">No Data</p>',
     animateRows: false,
     rowBuffer: 50,
     debounceVerticalScrollbar: true,
@@ -97,7 +126,10 @@ const gridOptionsManifest = {
     },
     rowData: [],
     overlayLoadingTemplate: '<p style="font-weight: bold; color: orangered;">Loading...</p>',
+    overlayNoRowsTemplate: '<p style="font-weight: bold; color: orangered;">No Data</p>',
     animateRows: false,
+    rowBuffer: 50,
+    debounceVerticalScrollbar: true,
     getRowStyle: params => {
         if (params.data && params.data.CRC && params.data.CRC.includes('failed')) {
             return { color: 'red' }
@@ -122,7 +154,10 @@ const gridOptionsLogText = {
     },
     rowData: [],
     overlayLoadingTemplate: '<p style="font-weight: bold; color: orangered;">Loading...</p>',
-    animateRows: false
+    overlayNoRowsTemplate: '<p style="font-weight: bold; color: orangered;">No Data</p>',
+    animateRows: false,
+    rowBuffer: 50,
+    debounceVerticalScrollbar: true,
 }
 
 const logTextGridElem = document.querySelector('#log-text-grid')
@@ -151,7 +186,8 @@ listen('records_csv', e => {
     const combinedRowData = [...currentRowData, ...rowData]
 
     recordsGrid.setGridOption('rowData', combinedRowData)
-    recordsGrid.setGridOption('loading', false)
+    showTab('records')
+    hideDropArea()
 })
 
 listen('manifest_csv', e => {
@@ -172,7 +208,11 @@ listen('manifest_csv', e => {
     const combinedRowData = [...currentRowData, ...rowData]
 
     manifestGrid.setGridOption('rowData', combinedRowData)
-    manifestGrid.setGridOption('loading', false)
+
+    if (!recordsButton.classList.contains('active-tab-button')) {
+        showTab('manifest')
+        hideDropArea()
+    }
 })
 
 listen('log_text_csv', e => {
@@ -193,7 +233,11 @@ listen('log_text_csv', e => {
     const combinedRowData = [...currentRowData, ...rowData]
 
     logTextGrid.setGridOption('rowData', combinedRowData)
-    logTextGrid.setGridOption('loading', false)
+
+    if (!recordsButton.classList.contains('active-tab-button') && !manifestButton.classList.contains('active-tab-button')) {
+        showTab('log')
+        hideDropArea()
+    }
 })
 
 // copy to clipboard
@@ -276,28 +320,4 @@ function showTab(tabId) {
     } else {
         searchContainer.style.display = 'block'
     }
-}
-
-// helper ----------------------------------------------------------------------
-function parseCsvLine(line) {
-    const result = []
-    let current = ''
-    let inQuotes = false
-
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i]
-        if (char === '"' && line[i + 1] === '"') {
-            current += '"'
-            i++ // skip next quote
-        } else if (char === '"') {
-            inQuotes = !inQuotes
-        } else if (char === ',' && !inQuotes) {
-            result.push(current)
-            current = ''
-        } else {
-            current += char
-        }
-    }
-    result.push(current)
-    return result
 }
