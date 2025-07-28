@@ -164,6 +164,7 @@ const logTextGridElem = document.querySelector('#log-text-grid')
 const logTextGrid = agGrid.createGrid(logTextGridElem, gridOptionsLogText)
 
 // listener --------------------------------------------------------------------
+let isFirstLoad = true
 listen('records_csv', e => {
     const csv = e.payload
     const [headerLine, ...lines] = csv.trim().split('\n')
@@ -186,8 +187,12 @@ listen('records_csv', e => {
     const combinedRowData = [...currentRowData, ...rowData]
 
     recordsGrid.setGridOption('rowData', combinedRowData)
-    showTab('records')
-    hideDropArea()
+
+    if (isFirstLoad) {
+        showTab('records')
+        hideDropArea()
+        isFirstLoad = false
+    }
 })
 
 listen('manifest_csv', e => {
