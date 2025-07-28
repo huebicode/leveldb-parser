@@ -242,8 +242,24 @@ listen('log_text_csv', e => {
 document.addEventListener('keydown', async (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
         e.preventDefault()
-        const focusedCell = getFocusedCellValue(recordsGrid)
-        await writeText(focusedCell)
+
+        const activeTab = document.querySelector('.active-tab-button').id
+        let activeGrid
+
+        if (activeTab === 'records-button') {
+            activeGrid = recordsGrid
+        } else if (activeTab === 'manifest-button') {
+            activeGrid = manifestGrid
+        } else if (activeTab === 'log-button') {
+            activeGrid = logTextGrid
+        }
+
+        if (activeGrid) {
+            const focusedCell = getFocusedCellValue(activeGrid)
+            if (focusedCell !== undefined) {
+                await writeText(focusedCell)
+            }
+        }
     }
 })
 
@@ -311,11 +327,4 @@ function showTab(tabId) {
     })
 
     document.getElementById(`${tabId}-button`).classList.add('active-tab-button')
-
-    // hide search if not records or manifest
-    if (tabId === 'log') {
-        searchContainer.style.display = 'none'
-    } else {
-        searchContainer.style.display = 'block'
-    }
 }
