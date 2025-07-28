@@ -188,10 +188,7 @@ listen('records_csv', e => {
         return obj
     })
 
-    const currentRowData = recordsGrid.getGridOption('rowData') || []
-    const combinedRowData = [...currentRowData, ...rowData]
-
-    recordsGrid.setGridOption('rowData', combinedRowData)
+    recordsGrid.applyTransactionAsync({ add: rowData })
 
     if (isFirstLoad) {
         showTab('records')
@@ -213,10 +210,7 @@ listen('manifest_csv', e => {
         return obj
     })
 
-    const currentRowData = manifestGrid.getGridOption('rowData') || []
-    const combinedRowData = [...currentRowData, ...rowData]
-
-    manifestGrid.setGridOption('rowData', combinedRowData)
+    manifestGrid.applyTransactionAsync({ add: rowData })
 
     if (!recordsButton.classList.contains('active-tab-button')) {
         showTab('manifest')
@@ -237,10 +231,7 @@ listen('log_text_csv', e => {
         return obj
     })
 
-    const currentRowData = logTextGrid.getGridOption('rowData') || []
-    const combinedRowData = [...currentRowData, ...rowData]
-
-    logTextGrid.setGridOption('rowData', combinedRowData)
+    logTextGrid.applyTransactionAsync({ add: rowData })
 
     if (!recordsButton.classList.contains('active-tab-button') && !manifestButton.classList.contains('active-tab-button')) {
         showTab('log')
