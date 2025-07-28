@@ -11,6 +11,7 @@ const recordsButton = document.getElementById('records-button')
 const manifestButton = document.getElementById('manifest-button')
 const logButton = document.getElementById('log-button')
 
+const loadingIndicator = document.getElementById('loading-indicator')
 const searchContainer = document.getElementById('search-container')
 
 // helper ----------------------------------------------------------------------
@@ -42,20 +43,16 @@ await getCurrentWebview().onDragDropEvent((e) => {
         overlay.classList.add('active')
     } else if (e.payload.type === 'drop') {
         overlay.classList.remove('active')
-        handleDrop(e.payload.paths)
+        dropAreaWrapper.style.display = 'none'
+        contentWrapper.style.display = 'block'
+
+        requestAnimationFrame(() => {
+            invoke('process_dropped_files', { paths: e.payload.paths })
+        })
     } else {
         overlay.classList.remove('active')
     }
 })
-
-function handleDrop(file_paths) {
-    invoke('process_dropped_files', { paths: file_paths })
-}
-
-function hideDropArea() {
-    dropAreaWrapper.style.display = 'none'
-    contentWrapper.style.display = 'block'
-}
 
 const CUT_OFF_LEN = 300
 const largeValRenderer = (params) => {
@@ -164,6 +161,14 @@ const logTextGridElem = document.querySelector('#log-text-grid')
 const logTextGrid = agGrid.createGrid(logTextGridElem, gridOptionsLogText)
 
 // listener --------------------------------------------------------------------
+listen('processing_started', () => {
+    loadingIndicator.style.display = 'block'
+})
+
+listen('processing_finished', () => {
+    loadingIndicator.style.display = 'none'
+})
+
 let isFirstLoad = true
 listen('records_csv', e => {
     const csv = e.payload
@@ -190,7 +195,6 @@ listen('records_csv', e => {
 
     if (isFirstLoad) {
         showTab('records')
-        hideDropArea()
         isFirstLoad = false
     }
 })
@@ -216,7 +220,6 @@ listen('manifest_csv', e => {
 
     if (!recordsButton.classList.contains('active-tab-button')) {
         showTab('manifest')
-        hideDropArea()
     }
 })
 
@@ -241,7 +244,6 @@ listen('log_text_csv', e => {
 
     if (!recordsButton.classList.contains('active-tab-button') && !manifestButton.classList.contains('active-tab-button')) {
         showTab('log')
-        hideDropArea()
     }
 })
 

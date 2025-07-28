@@ -16,9 +16,24 @@ pub fn process_dropped_files(window: tauri::Window, paths: Vec<String>) {
         collect_paths(Path::new(path_str), &mut all_paths);
     }
 
+    if let Err(e) = window.emit("processing_started", ()) {
+        println!("Error emitting processing started: {}", e);
+    }
+
+    let total_files = all_paths.len();
+    let processed = std::sync::atomic::AtomicUsize::new(1);
+
     all_paths.par_iter().for_each(|path| {
         let window = Arc::clone(&window);
         process_single_file(&window, path);
+
+        let count = processed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
+        if count == total_files {
+            if let Err(e) = window.emit("processing_finished", ()) {
+                println!("Error emitting processing finished: {}", e);
+            }
+        }
     });
 }
 
