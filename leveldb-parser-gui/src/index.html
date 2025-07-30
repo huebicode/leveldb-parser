@@ -27,12 +27,24 @@
         <div id="loading-indicator"></div>
       </div>
 
-
       <div id="search-container">
-        <input type="text" id="filter-text-box" placeholder="Search all columns..." />
+        <div class="input-container">
+          <input type="text" id="records-search-input" placeholder="Search" />
+          <button type="button" id="records-clear-button" class="clear-input-button"></button>
+        </div>
+
+        <div class="input-container">
+          <input type="text" id="manifest-search-input" placeholder="Search" />
+          <button type="button" id="manifest-clear-button" class="clear-input-button"></button>
+        </div>
+
+        <div class="input-container">
+          <input type="text" id="log-search-input" placeholder="Search" />
+          <button type="button" id="log-clear-button" class="clear-input-button"></button>
+        </div>
       </div>
 
-      <button id="clear-button">clear</button>
+      <button id="reload-button">clear</button>
     </div>
 
     <div id="records" class="tab-content">

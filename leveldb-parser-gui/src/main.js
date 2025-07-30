@@ -12,7 +12,6 @@ const manifestButton = document.getElementById('manifest-button')
 const logButton = document.getElementById('log-button')
 
 const loadingIndicator = document.getElementById('loading-indicator')
-const searchContainer = document.getElementById('search-container')
 
 // helper ----------------------------------------------------------------------
 function parseCsvLine(line) {
@@ -269,18 +268,35 @@ function getFocusedCellValue(gridApi) {
     return rowNode.data[focusedCell.column.getColId()]
 }
 
-// global search (quick filter)
-const filterTextBox = document.querySelector('#filter-text-box')
+// search inputs (quick filter)
 let searchTimeout = null
+document.querySelectorAll('[id$="search-input"]').forEach(inputElement => {
+    const prefix = inputElement.id.replace('-search-input', '')
+    const inputContainer = inputElement.closest('.input-container')
+    inputContainer.style.display = 'none'
 
-filterTextBox.addEventListener('input', function () {
-    filterTextBox.classList.add('searching')
+    const clearButton = document.getElementById(`${prefix}-clear-button`)
+    clearButton.style.display = 'none'
 
-    const activeTab = document.querySelector('.active-tab-button').id
-    const activeGrid = activeTab === 'records-button' ? recordsGrid : manifestGrid
+    let gridApi
+    switch (prefix) {
+        case 'records':
+            gridApi = recordsGrid
+            break
+        case 'manifest':
+            gridApi = manifestGrid
+            break
+        case 'log':
+            gridApi = logTextGrid
+            break
+    }
 
-    if (activeTab === 'records-button' || activeTab === 'manifest-button') {
-        activeGrid.setGridOption('loading', true)
+    inputElement.addEventListener('input', function () {
+        gridApi.setGridOption('loading', true)
+
+        if (clearButton) {
+            clearButton.style.display = this.value ? 'inline-block' : 'none'
+        }
 
         // debounce
         if (searchTimeout) {
@@ -288,15 +304,23 @@ filterTextBox.addEventListener('input', function () {
         }
 
         searchTimeout = setTimeout(() => {
-            activeGrid.setGridOption('quickFilterText', this.value)
-            activeGrid.setGridOption('loading', false)
-            filterTextBox.classList.remove('searching')
+            gridApi.setGridOption('quickFilterText', this.value)
+            gridApi.setGridOption('loading', false)
         }, 300)
+    })
+
+    if (clearButton) {
+        clearButton.addEventListener('click', () => {
+            inputElement.value = ''
+            clearButton.style.display = 'none'
+            inputElement.dispatchEvent(new Event('input'))
+            inputElement.focus()
+        })
     }
 })
 
-// clear button
-document.querySelector('#clear-button').addEventListener('click', () => {
+// reload button
+document.querySelector('#reload-button').addEventListener('click', () => {
     window.location.reload()
 })
 
@@ -319,6 +343,17 @@ function showTab(tabId) {
         const el = document.getElementById(id)
         if (el) {
             el.style.display = (id === tabId) ? 'block' : 'none'
+        }
+
+        const searchInput = document.getElementById(`${id}-search-input`)
+        if (searchInput) {
+            const inputContainer = searchInput.closest('.input-container')
+            inputContainer.style.display = (id === tabId) ? 'block' : 'none'
+
+            const clearButton = document.getElementById(`${id}-clear-button`)
+            if (clearButton) {
+                clearButton.style.display = (id === tabId && searchInput.value) ? 'inline-block' : 'none'
+            }
         }
     })
 
