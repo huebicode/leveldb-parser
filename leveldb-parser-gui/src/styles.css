@@ -33,6 +33,22 @@ body {
     font-size: var(--ag-font-size);
 }
 
+body,
+html {
+    margin: 0;
+    overflow: hidden;
+}
+
+#wrapper {
+    padding: 10px;
+}
+
+#records-grid,
+#manifest-grid,
+#log-text-grid {
+    height: calc(100vh - 44px);
+}
+
 #drop-overlay {
     position: fixed;
     inset: 0;
