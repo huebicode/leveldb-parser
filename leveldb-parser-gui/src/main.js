@@ -68,6 +68,14 @@ const largeValRenderer = (params) => {
     return truncated
 }
 
+const valuePopup = document.getElementById('value-popup')
+const popupContent = document.getElementById('popup-content')
+
+function showValuePopup(value) {
+    popupContent.textContent = value
+    valuePopup.style.display = 'flex'
+}
+
 // records-grid ----------------------------------------------------------------
 const gridOptionsRecords = {
     columnDefs: [
@@ -79,7 +87,15 @@ const gridOptionsRecords = {
             minWidth: 40,
         },
         { field: "K", headerName: "Key", flex: 2, minWidth: 100 },
-        { field: "V", headerName: "Value", flex: 5, minWidth: 100, cellRenderer: largeValRenderer },
+        {
+            field: "V", headerName: "Value", flex: 5, minWidth: 100,
+            cellRenderer: largeValRenderer,
+            onCellDoubleClicked: (params) => {
+                if (params.value) {
+                    showValuePopup(params.value)
+                }
+            },
+        },
         { field: "Cr", headerName: "CRC32", flex: 0.4, minWidth: 40 },
         { field: "St", headerName: "State", flex: 0.4, minWidth: 40 },
         { field: "BO", comparator: (valueA, valueB) => valueA - valueB, headerName: "Block Offset", flex: 0.4, minWidth: 90 },
@@ -237,9 +253,22 @@ listen('log_text_csv', e => {
     }
 })
 
+// value popup
+document.addEventListener('mousedown', (e) => {
+    if (valuePopup.style.display !== 'none' && e.target.id !== 'popup-content') {
+        valuePopup.style.display = 'none'
+    }
+})
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && valuePopup.style.display !== 'none') {
+        valuePopup.style.display = 'none'
+    }
+})
+
 // copy to clipboard
 document.addEventListener('keydown', async (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && valuePopup.style.display === 'none') {
         e.preventDefault()
 
         const activeTab = document.querySelector('.active-tab-button').id
