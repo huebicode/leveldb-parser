@@ -57,7 +57,7 @@ pub fn parse_file(file_path: &str) -> io::Result<ManifestFile> {
     let mut first_block_offset = 0;
 
     while reader.stream_position()? < file_size {
-        let block = log_parser::read_block(&mut reader)?;
+        let block = log_parser::read_raw_block(&mut reader)?;
 
         match block.block_type {
             1 => {

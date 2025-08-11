@@ -54,7 +54,7 @@ pub fn parse_file(file_path: &str) -> io::Result<LogFile> {
     let mut first_block_offset = 0;
 
     while reader.stream_position()? < file_size {
-        let block = read_block(&mut reader)?;
+        let block = read_raw_block(&mut reader)?;
 
         match block.block_type {
             1 => {
@@ -88,7 +88,7 @@ pub fn parse_file(file_path: &str) -> io::Result<LogFile> {
     Ok(LogFile { blocks, batches })
 }
 // -----------------------------------------------------------------------------
-pub fn read_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
+pub fn read_raw_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
     let offset = reader.stream_position()?;
 
     let crc = reader.read_u32::<LittleEndian>()?;
