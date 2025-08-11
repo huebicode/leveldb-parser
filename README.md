@@ -1,7 +1,5 @@
 # LevelDB Parser
-LevelDB is a key/value database from Google, used among other things in Chromium-based browsers and applications (such as Electron).
-
-This project is part of my master’s thesis in digital forensics at *Hochschule Albstadt-Sigmaringen*, Germany, which involves developing a parser for LevelDB. The final thesis will be uploaded here after completion.
+LevelDB is a key/value database from Google, used among other things in Chromium-based browsers and applications (such as Electron). This project is part of my master’s thesis in digital forensics at *Hochschule Albstadt-Sigmaringen*, Germany, which involves developing a parser (CLI/GUI) for LevelDB. The final thesis will be uploaded here after completion.
 
 ## Project Goal
 
@@ -24,6 +22,9 @@ Implemented features:
 - [x] parse `.ldb` files
 - [x] CLI
 - [x] GUI
+
+## GUI
+<img alt="leveldbgui-interface" src="https://github.com/user-attachments/assets/2636cebe-46da-455e-aeca-94a34e35eca1" />
 
 ## CLI
 `leveldb-parser-cli` can parse `.log`, `.ldb` or `MANIFEST` files. 
