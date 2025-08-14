@@ -64,22 +64,13 @@ html {
     }
 }
 
-#drop-area-wrapper {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
 #drop-area {
-    width: 300px;
-    height: 100px;
-
+    position: fixed;
+    inset: 15%;
     display: flex;
     justify-content: center;
     align-items: center;
-
-    padding: 66px;
+    text-align: center;
     font-weight: bold;
     border: 2px dashed grey;
     border-radius: 8px;
@@ -176,7 +167,7 @@ html {
 }
 
 .input-container {
-    border: 2px solid var(--border-color);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     padding: 0 2px;
     position: relative;
