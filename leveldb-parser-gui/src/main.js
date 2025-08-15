@@ -63,7 +63,7 @@ const largeValRenderer = (params) => {
     if (!isLarge) return fullValue
 
     const remainingChars = fullValue.length - CUT_OFF_LEN
-    const truncated = fullValue.substring(0, CUT_OFF_LEN) + `<span style="color: red;">[+${remainingChars.toLocaleString()} Chars...]</span>`
+    const truncated = fullValue.substring(0, CUT_OFF_LEN) + `<span style="color: red;"> [+${remainingChars.toLocaleString()} Chars]</span>`
 
     return truncated
 }
