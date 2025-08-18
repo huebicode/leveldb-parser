@@ -55,17 +55,21 @@ await getCurrentWebview().onDragDropEvent((e) => {
 
 const CUT_OFF_LEN = 300
 const largeValRenderer = (params) => {
-    if (!params.value) return ''
-
-    const fullValue = params.value
+    const fullValue = params.value ?? ''
     const isLarge = fullValue.length > CUT_OFF_LEN
 
-    if (!isLarge) return fullValue
+    const container = document.createElement('span')
+    container.textContent = isLarge ? fullValue.substring(0, CUT_OFF_LEN) : fullValue
 
-    const remainingChars = fullValue.length - CUT_OFF_LEN
-    const truncated = fullValue.substring(0, CUT_OFF_LEN) + `<span style="color: red;"> [+${remainingChars.toLocaleString()} Chars]</span>`
+    if (isLarge) {
+        const remainingChars = fullValue.length - CUT_OFF_LEN
+        const badge = document.createElement('span')
+        badge.style.color = 'red'
+        badge.textContent = ` [+${remainingChars.toLocaleString()} Chars]`
+        container.appendChild(badge)
+    }
 
-    return truncated
+    return container
 }
 
 const valuePopup = document.getElementById('value-popup')
