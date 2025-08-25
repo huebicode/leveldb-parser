@@ -214,6 +214,10 @@ const logTextGridElem = document.querySelector('#log-text-grid')
 const logTextGrid = agGrid.createGrid(logTextGridElem, gridOptionsLogText)
 
 // listener --------------------------------------------------------------------
+recordsGrid.addEventListener('filterChanged', updateRowCount)
+manifestGrid.addEventListener('filterChanged', updateRowCount)
+logTextGrid.addEventListener('filterChanged', updateRowCount)
+
 listen('processing_started', () => {
     loadingIndicator.style.display = 'block'
 })
@@ -376,7 +380,6 @@ document.querySelectorAll('[id$="search-input"]').forEach(inputElement => {
         searchTimeout = setTimeout(() => {
             gridApi.setGridOption('quickFilterText', this.value)
             gridApi.setGridOption('loading', false)
-            updateRowCount()
         }, 300)
     })
 
