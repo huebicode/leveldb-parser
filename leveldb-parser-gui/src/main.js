@@ -99,15 +99,20 @@ function showValuePopup(value) {
         }
     }
 
-    // escape HTML
-    let html = escapeHtml(value)
-    if (searchTerm) {
-        const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const regex = new RegExp(escapedTerm, 'gi')
-        html = html.replace(regex, match => `<mark>${match}</mark>`)
+    if (!searchTerm) {
+        popupContent.textContent = value
+    } else {
+        // escape HTML and highlight search terms
+        let html = escapeHtml(value)
+        const words = searchTerm.split(/\s+/).filter(Boolean).map(w =>
+            w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        )
+        if (words.length > 0) {
+            const regex = new RegExp(words.join('|'), 'gi')
+            html = html.replace(regex, match => `<mark>${match}</mark>`)
+        }
+        popupContent.innerHTML = html
     }
-
-    popupContent.innerHTML = html
     valuePopup.style.display = 'flex'
 }
 
@@ -344,6 +349,7 @@ function getFocusedCellValue(gridApi) {
 
 // search inputs (quick filter)
 let searchTimeout = null
+let searchFrame = null
 document.querySelectorAll('[id$="search-input"]').forEach(inputElement => {
     const prefix = inputElement.id.replace('-search-input', '')
     const inputContainer = inputElement.closest('.input-container')
@@ -372,14 +378,19 @@ document.querySelectorAll('[id$="search-input"]').forEach(inputElement => {
             clearButton.style.display = this.value ? 'inline-block' : 'none'
         }
 
-        // debounce
         if (searchTimeout) {
             clearTimeout(searchTimeout)
         }
+        if (searchFrame) {
+            cancelAnimationFrame(searchFrame)
+        }
 
+        // debounce
         searchTimeout = setTimeout(() => {
-            gridApi.setGridOption('quickFilterText', this.value)
-            gridApi.setGridOption('loading', false)
+            searchFrame = requestAnimationFrame(() => {
+                gridApi.setGridOption('quickFilterText', this.value)
+                gridApi.setGridOption('loading', false)
+            })
         }, 300)
     })
 
