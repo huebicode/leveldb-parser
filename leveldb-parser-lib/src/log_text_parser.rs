@@ -36,14 +36,14 @@ pub fn parse_file(path: &str) -> Result<LogTextFile, io::Error> {
 pub mod export {
     use super::*;
 
-    pub fn csv_string(log_file: &LogTextFile, filename: &str) -> String {
-        let mut csv = String::from("\"Date\",\"ThreadId\",\"Msg\",\"File\"\n");
+    pub fn csv_string(log_file: &LogTextFile, filename: &str, file_path: &str) -> String {
+        let mut csv = String::from("\"Date\",\"ThreadId\",\"Msg\",\"File\",\"FilePath\"\n");
 
         for entry in &log_file.entries {
             let message = entry.message.replace("\"", "\"\""); // escape quotes for CSV
             csv.push_str(&format!(
-                "\"{}\",\"{}\",\"{}\",\"{}\"\n",
-                entry.timestamp, entry.thread_id, message, filename
+                "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
+                entry.timestamp, entry.thread_id, message, filename, file_path
             ));
         }
 

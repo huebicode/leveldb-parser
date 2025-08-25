@@ -368,10 +368,10 @@ pub mod display {
 pub mod export {
     use super::*;
 
-    pub fn csv_string(manifest: &ManifestFile, filename: &str) -> String {
+    pub fn csv_string(manifest: &ManifestFile, filename: &str, file_path: &str) -> String {
         let mut csv = String::new();
         // Header
-        csv.push_str("\"Tag\",\"TagValue\",\"CRC\",\"BlockOffset\",\"File\"\n");
+        csv.push_str("\"Tag\",\"TagValue\",\"CRC\",\"BlockOffset\",\"File\",\"FilePath\"\n");
 
         let block_crc_map: std::collections::HashMap<u64, bool> = manifest
             .blocks
@@ -447,8 +447,8 @@ pub mod export {
                 let escaped_value = value.replace("\"", "\"\"");
 
                 csv.push_str(&format!(
-                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
-                    tag, escaped_value, crc_status, block_offset, filename
+                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
+                    tag, escaped_value, crc_status, block_offset, filename, file_path
                 ));
             }
         }

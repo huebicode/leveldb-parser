@@ -105,6 +105,7 @@ const gridOptionsRecords = {
         { field: "BO", comparator: (valueA, valueB) => valueA - valueB, headerName: "Block Offset", flex: 0.4, minWidth: 90 },
         { field: "C", headerName: "Compressed", flex: 0.4, minWidth: 90, cellStyle: { pointerEvents: 'none' } },
         { field: "F", headerName: "File", flex: 0.4, minWidth: 80 },
+        { field: "FP", headerName: "File Path", flex: 0.4, minWidth: 80 },
     ],
     defaultColDef: {
         filter: true,
@@ -136,6 +137,7 @@ const gridOptionsManifest = {
         { field: "CRC", headerName: "CRC32", flex: 0.4, minWidth: 40 },
         { field: "BlockOffset", headerName: "Block Offset", flex: 0.4, minWidth: 90 },
         { field: "File", flex: 0.4, minWidth: 115 },
+        { field: "FilePath", headerName: "File Path", flex: 0.4, minWidth: 115 },
     ],
     defaultColDef: {
         filter: true,
@@ -164,6 +166,7 @@ const gridOptionsLogText = {
         { field: "ThreadId", headerName: "ThreadID", flex: 0.2, minWidth: 80 },
         { field: "Msg", headerName: "Message", flex: 5, minWidth: 300 },
         { field: "File", flex: 0.2, minWidth: 80 },
+        { field: "FilePath", headerName: "File Path", flex: 0.2, minWidth: 80 },
     ],
     defaultColDef: {
         filter: true,

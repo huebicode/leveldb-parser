@@ -380,10 +380,10 @@ pub mod display {
 pub mod export {
     use super::*;
 
-    pub fn csv_string(log: &LogFile, filename: &str) -> String {
+    pub fn csv_string(log: &LogFile, filename: &str, file_path: &str) -> String {
         let mut csv = String::new();
         // Header
-        csv.push_str("\"Seq\",\"K\",\"V\",\"Cr\",\"St\",\"BO\",\"C\",\"F\"\n");
+        csv.push_str("\"Seq\",\"K\",\"V\",\"Cr\",\"St\",\"BO\",\"C\",\"F\",\"FP\"\n");
 
         for batch in &log.batches {
             // find the block that contains this batch
@@ -411,7 +411,7 @@ pub mod export {
                 };
 
                 csv.push_str(&format!(
-                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
+                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
                     record.seq,
                     key_str,
                     value_str,
@@ -419,7 +419,8 @@ pub mod export {
                     state_str,
                     batch.offset,
                     "false", // .log files don't use compression
-                    filename
+                    filename,
+                    file_path,
                 ));
             }
         }

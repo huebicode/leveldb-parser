@@ -57,46 +57,57 @@ fn collect_paths(path: &Path, result: &mut Vec<std::path::PathBuf>) {
 fn process_single_file(window: &tauri::Window, path: &Path) {
     if let Some(file_name) = path.file_name() {
         let file_name_str = file_name.to_string_lossy();
+        let file_path_str = path.to_string_lossy();
 
         if file_name_str.ends_with(".ldb") {
             match ldb_parser::parse_file(path.to_str().unwrap()) {
                 Ok(ldb_file) => {
-                    let csv = ldb_parser::export::csv_string(&ldb_file, &file_name_str);
+                    let csv =
+                        ldb_parser::export::csv_string(&ldb_file, &file_name_str, &file_path_str);
                     if let Err(e) = window.emit("records_csv", csv) {
                         println!("Error emitting LDB CSV: {}", e);
                     }
                 }
-                Err(e) => println!("Error parsing LDB file {}: {:?}", path.display(), e),
+                Err(e) => println!("Error parsing LDB file {}: {:?}", file_path_str, e),
             }
         } else if file_name_str.ends_with(".log") {
             match log_parser::parse_file(path.to_str().unwrap()) {
                 Ok(log_file) => {
-                    let csv = log_parser::export::csv_string(&log_file, &file_name_str);
+                    let csv =
+                        log_parser::export::csv_string(&log_file, &file_name_str, &file_path_str);
                     if let Err(e) = window.emit("records_csv", csv) {
                         println!("Error emitting Log CSV: {}", e);
                     }
                 }
-                Err(e) => println!("Error parsing Log file {}: {:?}", path.display(), e),
+                Err(e) => println!("Error parsing Log file {}: {:?}", file_path_str, e),
             }
         } else if file_name_str.starts_with("MANIFEST-") {
             match manifest_parser::parse_file(path.to_str().unwrap()) {
                 Ok(manifest_file) => {
-                    let csv = manifest_parser::export::csv_string(&manifest_file, &file_name_str);
+                    let csv = manifest_parser::export::csv_string(
+                        &manifest_file,
+                        &file_name_str,
+                        &file_path_str,
+                    );
                     if let Err(e) = window.emit("manifest_csv", csv) {
                         println!("Error emitting Manifest CSV: {}", e);
                     }
                 }
-                Err(e) => println!("Error parsing Manifest file {}: {:?}", path.display(), e),
+                Err(e) => println!("Error parsing Manifest file {}: {:?}", file_path_str, e),
             }
         } else if file_name_str.starts_with("LOG") {
             match log_text_parser::parse_file(path.to_str().unwrap()) {
                 Ok(log_text_file) => {
-                    let csv = log_text_parser::export::csv_string(&log_text_file, &file_name_str);
+                    let csv = log_text_parser::export::csv_string(
+                        &log_text_file,
+                        &file_name_str,
+                        &file_path_str,
+                    );
                     if let Err(e) = window.emit("log_text_csv", csv) {
                         println!("Error emitting LOG text CSV: {}", e);
                     }
                 }
-                Err(e) => println!("Error parsing LOG text file {}: {:?}", path.display(), e),
+                Err(e) => println!("Error parsing LOG text file {}: {:?}", file_path_str, e),
             }
         }
     }

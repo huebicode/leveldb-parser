@@ -617,10 +617,10 @@ pub mod display {
 pub mod export {
     use super::*;
 
-    pub fn csv_string(ldb: &LdbFile, filename: &str) -> String {
+    pub fn csv_string(ldb: &LdbFile, filename: &str, file_path: &str) -> String {
         let mut csv = String::new();
         // Header
-        csv.push_str("\"Seq\",\"K\",\"V\",\"Cr\",\"St\",\"BO\",\"C\",\"F\"\n");
+        csv.push_str("\"Seq\",\"K\",\"V\",\"Cr\",\"St\",\"BO\",\"C\",\"F\",\"FP\"\n");
 
         for data_block in &ldb.data_blocks {
             let compressed = data_block.raw_block.compression_type != 0;
@@ -642,7 +642,7 @@ pub mod export {
                     utils::bytes_to_latin1_without_hex(&record.value).replace("\"", "\"\"");
 
                 csv.push_str(&format!(
-                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
+                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
                     record.seq,
                     key_str,
                     value_str,
@@ -650,7 +650,8 @@ pub mod export {
                     state_str,
                     data_block.block_handle.offset,
                     compressed,
-                    filename
+                    filename,
+                    file_path,
                 ));
             }
         }
