@@ -75,8 +75,39 @@ const largeValRenderer = (params) => {
 const valuePopup = document.getElementById('value-popup')
 const popupContent = document.getElementById('popup-content')
 
+function escapeHtml(text) {
+    return text.replace(/[&<>"']/g, function (m) {
+        switch (m) {
+            case '&': return '&amp;'
+            case '<': return '&lt;'
+            case '>': return '&gt;'
+            case '"': return '&quot;'
+            case "'": return '&#39;'
+            default: return m
+        }
+    })
+}
+
 function showValuePopup(value) {
-    popupContent.textContent = value
+    const activeTabButton = document.querySelector('.active-tab-button')
+    let searchTerm = ''
+    if (activeTabButton) {
+        const tabId = activeTabButton.id.replace('-button', '')
+        const searchInput = document.getElementById(`${tabId}-search-input`)
+        if (searchInput && searchInput.value.trim()) {
+            searchTerm = searchInput.value.trim()
+        }
+    }
+
+    // escape HTML
+    let html = escapeHtml(value)
+    if (searchTerm) {
+        const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const regex = new RegExp(escapedTerm, 'gi')
+        html = html.replace(regex, match => `<mark>${match}</mark>`)
+    }
+
+    popupContent.innerHTML = html
     valuePopup.style.display = 'flex'
 }
 
