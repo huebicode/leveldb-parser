@@ -207,12 +207,13 @@ listen('records_csv', e => {
         return obj
     })
 
-    recordsGrid.applyTransactionAsync({ add: rowData })
+    recordsGrid.applyTransaction({ add: rowData })
 
     if (isFirstLoad) {
         showTab('records')
         isFirstLoad = false
     }
+    updateRowCount()
 })
 
 listen('manifest_csv', e => {
@@ -229,11 +230,12 @@ listen('manifest_csv', e => {
         return obj
     })
 
-    manifestGrid.applyTransactionAsync({ add: rowData })
+    manifestGrid.applyTransaction({ add: rowData })
 
     if (!recordsButton.classList.contains('active-tab-button')) {
         showTab('manifest')
     }
+    updateRowCount()
 })
 
 listen('log_text_csv', e => {
@@ -250,11 +252,12 @@ listen('log_text_csv', e => {
         return obj
     })
 
-    logTextGrid.applyTransactionAsync({ add: rowData })
+    logTextGrid.applyTransaction({ add: rowData })
 
     if (!recordsButton.classList.contains('active-tab-button') && !manifestButton.classList.contains('active-tab-button')) {
         showTab('log')
     }
+    updateRowCount()
 })
 
 // value popup
@@ -339,6 +342,7 @@ document.querySelectorAll('[id$="search-input"]').forEach(inputElement => {
         searchTimeout = setTimeout(() => {
             gridApi.setGridOption('quickFilterText', this.value)
             gridApi.setGridOption('loading', false)
+            updateRowCount()
         }, 300)
     })
 
@@ -395,4 +399,19 @@ function showTab(tabId) {
     })
 
     document.getElementById(`${tabId}-button`).classList.add('active-tab-button')
+    updateRowCount()
+}
+
+function updateRowCount() {
+    const activeTab = document.querySelector('.active-tab-button').id
+    let gridApi
+    if (activeTab === 'records-button') {
+        gridApi = recordsGrid
+    } else if (activeTab === 'manifest-button') {
+        gridApi = manifestGrid
+    } else if (activeTab === 'log-button') {
+        gridApi = logTextGrid
+    }
+    const count = gridApi ? gridApi.getDisplayedRowCount() : 0
+    document.getElementById('row-count').textContent = count
 }

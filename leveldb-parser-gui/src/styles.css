@@ -46,7 +46,7 @@ html {
 #records-grid,
 #manifest-grid,
 #log-text-grid {
-    height: calc(100vh - 44px);
+    height: calc(100vh - 55px);
 }
 
 #drop-overlay {
@@ -275,4 +275,10 @@ button[id$="clear-button"] {
     margin: 10px;
     overflow: auto;
     word-break: break-all;
+}
+
+#status-bar {
+    display: flex;
+    align-items: center;
+    height: 20px;
 }
