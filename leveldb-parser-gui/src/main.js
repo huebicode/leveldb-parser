@@ -92,6 +92,7 @@ function escapeHtml(text) {
 
 function showValuePopup(value) {
     const activeTabButton = document.querySelector('.active-tab-button')
+
     let searchTerm = ''
     if (activeTabButton) {
         const tabId = activeTabButton.id.replace('-button', '')
@@ -101,12 +102,25 @@ function showValuePopup(value) {
         }
     }
 
-    if (!searchTerm) {
+    let filterTerm = ''
+    if (activeTabButton && activeTabButton.id === 'records-button') {
+        const filterModel = recordsGrid.getFilterModel()
+        if (filterModel.V && filterModel.V.filter) {
+            filterTerm = filterModel.V.filter.trim()
+        }
+    }
+
+    let allTerms = []
+    if (searchTerm) allTerms.push(searchTerm)
+    if (filterTerm) allTerms.push(filterTerm)
+    allTerms = allTerms.join(' ').trim()
+
+    if (!allTerms) {
         popupContent.textContent = value
     } else {
         // escape HTML and highlight search terms
         let html = escapeHtml(value)
-        const words = searchTerm.split(/\s+/).filter(Boolean).map(w =>
+        const words = allTerms.split(/\s+/).filter(Boolean).map(w =>
             w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
         )
         if (words.length > 0) {
