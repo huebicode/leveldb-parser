@@ -21,11 +21,13 @@ function parseCsvLine(line) {
 
     for (let i = 0; i < line.length; i++) {
         const char = line[i]
-        if (char === '"' && line[i + 1] === '"') {
-            current += '"'
-            i++ // skip next quote
-        } else if (char === '"') {
-            inQuotes = !inQuotes
+        if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+                current += '"'
+                i++ // skip next quote
+            } else {
+                inQuotes = !inQuotes
+            }
         } else if (char === ',' && !inQuotes) {
             result.push(current)
             current = ''
@@ -234,6 +236,7 @@ listen('processing_finished', () => {
 let isFirstLoad = true
 listen('records_csv', e => {
     const csv = e.payload
+    // console.log(csv)
     const [headerLine, ...lines] = csv.trim().split('\n')
     const headers = parseCsvLine(headerLine)
 
@@ -402,6 +405,30 @@ document.querySelectorAll('[id$="search-input"]').forEach(inputElement => {
             inputElement.focus()
         })
     }
+})
+
+// filter reset button
+function resetFilter() {
+    const activeTab = document.querySelector('.active-tab-button').id
+    let searchInput
+    if (activeTab === 'records-button') {
+        recordsGrid.setFilterModel(null)
+        searchInput = document.getElementById('records-search-input')
+    } else if (activeTab === 'manifest-button') {
+        manifestGrid.setFilterModel(null)
+        searchInput = document.getElementById('manifest-search-input')
+    } else if (activeTab === 'log-button') {
+        logTextGrid.setFilterModel(null)
+        searchInput = document.getElementById('log-search-input')
+    }
+    if (searchInput) {
+        searchInput.value = ''
+        searchInput.dispatchEvent(new Event('input'))
+    }
+}
+
+document.querySelector('#filter-reset-button').addEventListener('click', () => {
+    resetFilter()
 })
 
 // reload button
