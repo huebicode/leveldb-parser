@@ -504,3 +504,33 @@ function updateRowCount() {
     const count = gridApi ? gridApi.getDisplayedRowCount() : 0
     document.getElementById('row-count').textContent = count
 }
+
+// export as CSV
+document.getElementById('csv-export-button').addEventListener('click', async () => {
+    const activeTab = document.querySelector('.active-tab-button').id
+    let gridApi, defaultName
+
+    if (activeTab === 'records-button') {
+        gridApi = recordsGrid
+        defaultName = 'records.csv'
+    } else if (activeTab === 'manifest-button') {
+        gridApi = manifestGrid
+        defaultName = 'manifest.csv'
+    } else if (activeTab === 'log-button') {
+        gridApi = logTextGrid
+        defaultName = 'log.csv'
+    }
+
+    if (gridApi) {
+        const csv = gridApi.getDataAsCsv()
+
+        const filePath = await window.__TAURI__.dialog.save({
+            defaultPath: defaultName,
+            filters: [{ name: 'CSV', extensions: ['csv'] }]
+        })
+
+        if (filePath) {
+            await window.__TAURI__.fs.writeTextFile(filePath, csv)
+        }
+    }
+})
