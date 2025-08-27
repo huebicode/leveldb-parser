@@ -51,16 +51,10 @@ pub fn bytes_to_latin1_with_hex(bytes: &[u8]) -> String {
         .collect()
 }
 
-pub fn bytes_to_latin1_without_hex(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .filter_map(|&b| {
-            if b.is_ascii_graphic() || b == 0x20 || b >= 0xA0 {
-                Some(b as char)
-            } else {
-                None
-            }
-        })
+pub fn bytes_to_utf8_lossy(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes)
+        .chars()
+        .filter(|c| !c.is_control())
         .collect()
 }
 

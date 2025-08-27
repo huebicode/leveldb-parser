@@ -118,15 +118,15 @@ function showValuePopup(value) {
     if (!allTerms) {
         popupContent.textContent = value
     } else {
-        // escape HTML and highlight search terms
+        // escape HTML and highlight search phrase
         let html = escapeHtml(value)
-        const words = allTerms.split(/\s+/).filter(Boolean).map(w =>
-            w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        )
-        if (words.length > 0) {
-            const regex = new RegExp(words.join('|'), 'gi')
+
+        const phrase = allTerms.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        if (phrase) {
+            const regex = new RegExp(phrase, 'gi')
             html = html.replace(regex, match => `<mark>${match}</mark>`)
         }
+
         popupContent.innerHTML = html
     }
     valuePopup.style.display = 'flex'

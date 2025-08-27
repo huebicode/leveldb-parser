@@ -402,10 +402,10 @@ pub mod export {
                     _ => "unknown",
                 };
 
-                let key_str = utils::bytes_to_latin1_without_hex(&record.key).replace("\"", "\"\"");
+                let key_str = utils::bytes_to_utf8_lossy(&record.key).replace("\"", "\"\"");
 
                 let value_str = if let Some(value) = &record.value {
-                    utils::bytes_to_latin1_without_hex(value).replace("\"", "\"\"")
+                    utils::bytes_to_utf8_lossy(value).replace("\"", "\"\"")
                 } else {
                     "".to_string()
                 };
