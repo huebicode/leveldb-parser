@@ -242,8 +242,6 @@ button[id$="clear-button"] {
 }
 
 #reload-button {
-
-
     &::before {
         --icon-size: 18px;
         position: absolute;
@@ -287,4 +285,5 @@ button[id$="clear-button"] {
     display: flex;
     align-items: center;
     height: 20px;
+    justify-content: space-between;
 }

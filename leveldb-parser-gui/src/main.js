@@ -46,10 +46,7 @@ await getCurrentWebview().onDragDropEvent((e) => {
         overlay.classList.remove('active')
         dropAreaWrapper.style.display = 'none'
         contentWrapper.style.display = 'block'
-
-        requestAnimationFrame(() => {
-            invoke('process_dropped_files', { paths: e.payload.paths })
-        })
+        invoke('process_dropped_files', { paths: e.payload.paths })
     } else {
         overlay.classList.remove('active')
     }
@@ -235,16 +232,26 @@ const logTextGridElem = document.querySelector('#log-text-grid')
 const logTextGrid = agGrid.createGrid(logTextGridElem, gridOptionsLogText)
 
 // listener --------------------------------------------------------------------
+
 recordsGrid.addEventListener('filterChanged', updateRowCount)
 manifestGrid.addEventListener('filterChanged', updateRowCount)
 logTextGrid.addEventListener('filterChanged', updateRowCount)
 
+let processingTime = null
 listen('processing_started', () => {
     loadingIndicator.style.display = 'block'
+    processingTime = performance.now()
 })
 
 listen('processing_finished', () => {
     loadingIndicator.style.display = 'none'
+    if (processingTime) {
+        const duration = ((performance.now() - processingTime) / 1000).toFixed(2)
+        const procTime = document.getElementById('processing-time')
+        procTime.firstElementChild.textContent = duration
+        procTime.style.display = 'block'
+        processingTime = null
+    }
 })
 
 let isFirstLoad = true
