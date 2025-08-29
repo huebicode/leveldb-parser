@@ -568,3 +568,55 @@ document.getElementById('csv-export-button').addEventListener('click', async () 
         }
     }
 })
+
+// tooltips
+document.querySelectorAll('[data-tooltip]').forEach(btn => {
+    let tooltipDiv
+    let tooltipTimeout
+
+    btn.addEventListener('mouseenter', () => {
+        const text = btn.getAttribute('data-tooltip')
+        if (!text) return
+
+        tooltipTimeout = setTimeout(() => {
+            tooltipDiv = document.createElement('div')
+            tooltipDiv.textContent = text
+            tooltipDiv.style.position = 'absolute'
+            tooltipDiv.style.background = '#333'
+            tooltipDiv.style.color = '#fff'
+            tooltipDiv.style.padding = '6px 10px'
+            tooltipDiv.style.borderRadius = '4px'
+            tooltipDiv.style.fontSize = '13px'
+            tooltipDiv.style.whiteSpace = 'nowrap'
+            tooltipDiv.style.zIndex = '9999'
+            tooltipDiv.style.pointerEvents = 'none'
+            tooltipDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'
+            tooltipDiv.style.textAlign = 'center'
+
+            document.body.appendChild(tooltipDiv)
+
+            // position below the button
+            const rect = btn.getBoundingClientRect()
+            tooltipDiv.style.top = `${rect.bottom + 6}px`
+            tooltipDiv.style.left = `${rect.left + rect.width / 2}px`
+            tooltipDiv.style.transform = 'translateX(-50%)'
+
+            // prevent overflow
+            const tipRect = tooltipDiv.getBoundingClientRect()
+            if (tipRect.right > window.innerWidth) {
+                tooltipDiv.style.left = `${window.innerWidth - tipRect.width / 2 - 8}px`
+            }
+            if (tipRect.left < 0) {
+                tooltipDiv.style.left = `${tipRect.width / 2 + 8}px`
+            }
+        }, 500)
+    })
+
+    btn.addEventListener('mouseleave', () => {
+        clearTimeout(tooltipTimeout)
+        if (tooltipDiv) {
+            tooltipDiv.remove()
+            tooltipDiv = null
+        }
+    })
+})

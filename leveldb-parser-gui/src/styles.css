@@ -49,7 +49,7 @@ html {
 #records-grid,
 #manifest-grid,
 #log-text-grid {
-    height: calc(100vh - 55px);
+    height: calc(100vh - 60px);
 }
 
 #drop-overlay {
@@ -254,7 +254,7 @@ button[id$="clear-button"] {
 #filter-reset-button:disabled {
     svg {
         path {
-            fill: grey !important;
+            fill: rgba(0, 0, 33, 0.15) !important;
         }
     }
 
