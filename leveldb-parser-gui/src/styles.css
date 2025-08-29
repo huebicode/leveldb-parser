@@ -27,7 +27,10 @@ body {
     --ag-checkbox-checked-background-color: transparent;
 
     --border-color: rgba(0, 0, 33, 0.5);
+    --ui-button-bg: rgba(0, 0, 33, 0.05);
     --blue: #2196f3;
+
+    --icon-size: 18px;
 
     font-family: var(--ag-font-family);
     font-size: var(--ag-font-size);
@@ -106,7 +109,7 @@ html {
     border-bottom: transparent;
     border-right: transparent;
 
-    background-color: rgba(0, 0, 33, 0.1);
+    background-color: var(--ui-button-bg);
     padding: 3px 10px;
     margin: 0;
 }
@@ -163,7 +166,7 @@ html {
 }
 
 #search-container {
-    margin-top: -3px;
+    align-self: top;
 }
 
 .input-container {
@@ -220,7 +223,8 @@ button[id$="clear-button"] {
 }
 
 #button-container {
-    /* border: 1px solid red; */
+    align-self: top;
+    padding-bottom: 4px;
     display: flex;
     gap: 8px;
 }
@@ -228,33 +232,38 @@ button[id$="clear-button"] {
 #filter-reset-button,
 #csv-export-button,
 #reload-button {
-    position: relative;
-    top: -2px;
-    width: 20px;
-    height: 20px;
-    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    background-color: var(--ui-button-bg);
+    border: 1px solid rgb(205, 205, 205);
     border-radius: 4px;
-    background-color: transparent;
 
     &:hover {
-        border-color: var(--border-color)
+        border-color: var(--border-color);
+    }
+
+    &:active {
+        background-color: white;
     }
 }
 
-#reload-button {
-    &::before {
-        --icon-size: 18px;
-        position: absolute;
-        top: 0;
-        left: 0;
-        content: '';
-        display: inline-block;
-        mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M 8.4746094 3 C 8.0004113 2.9997806 7.5850755 3.3186409 7.4648438 3.7773438 L 7.140625 5.0253906 L 4.2226562 5.0253906 C 3.6456425 5.025139 3.1781848 5.4933007 3.1796875 6.0703125 C 3.1794375 6.6464409 3.6465278 7.1135305 4.2226562 7.1132812 L 4.8125 7.1132812 L 4.8125 19.955078 C 4.8110552 20.532066 5.278479 21.000194 5.8554688 21 L 17.990234 21 C 18.567224 21.000194 19.034648 20.532066 19.033203 19.955078 L 19.033203 7.1132812 L 19.777344 7.1132812 C 20.353472 7.1135306 20.820563 6.6464409 20.820312 6.0703125 C 20.821813 5.4933007 20.354358 5.025139 19.777344 5.0253906 L 16.955078 5.0253906 L 16.623047 3.7773438 C 16.502815 3.3186407 16.087479 2.9997802 15.613281 3 L 8.4746094 3 z M 6.8984375 7.1132812 L 16.947266 7.1132812 L 16.947266 18.912109 L 6.8984375 18.912109 L 6.8984375 7.1132812 z M 9.8398438 8.7617188 C 9.2672332 8.7614516 8.801597 9.2242838 8.796875 9.796875 L 8.796875 16.585938 C 8.7966246 17.162067 9.2637151 17.629155 9.8398438 17.628906 C 10.415973 17.629155 10.883063 17.162066 10.882812 16.585938 L 10.882812 9.796875 C 10.878091 9.2242838 10.412455 8.7614516 9.8398438 8.7617188 z M 14.015625 8.7617188 C 13.443014 8.7614516 12.977378 9.2242838 12.972656 9.796875 L 12.972656 16.585938 C 12.972406 17.162067 13.439496 17.629155 14.015625 17.628906 C 14.588216 17.624206 15.049096 17.158548 15.048828 16.585938 L 15.048828 9.796875 C 15.044154 9.2277954 14.584705 8.7663936 14.015625 8.7617188 z"></path></svg>');
-        mask-size: 100%;
-        background-color: orangered;
-        width: var(--icon-size);
-        height: var(--icon-size);
-        pointer-events: none;
+#filter-reset-button:disabled {
+    svg {
+        path {
+            fill: grey !important;
+        }
+    }
+
+    &:hover {
+        border-color: rgb(205, 205, 205);
+    }
+
+    &:active {
+        background-color: var(--ui-button-bg);
     }
 }
 

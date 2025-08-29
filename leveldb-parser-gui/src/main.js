@@ -232,10 +232,35 @@ const logTextGridElem = document.querySelector('#log-text-grid')
 const logTextGrid = agGrid.createGrid(logTextGridElem, gridOptionsLogText)
 
 // listener --------------------------------------------------------------------
+function onFilterChanged() {
+    updateRowCount()
+    updateFilterResetButtonState()
+}
 
-recordsGrid.addEventListener('filterChanged', updateRowCount)
-manifestGrid.addEventListener('filterChanged', updateRowCount)
-logTextGrid.addEventListener('filterChanged', updateRowCount)
+function updateFilterResetButtonState() {
+    const activeTab = document.querySelector('.active-tab-button').id
+    let gridApi, searchInput
+
+    if (activeTab === 'records-button') {
+        gridApi = recordsGrid
+        searchInput = document.getElementById('records-search-input')
+    } else if (activeTab === 'manifest-button') {
+        gridApi = manifestGrid
+        searchInput = document.getElementById('manifest-search-input')
+    } else if (activeTab === 'log-button') {
+        gridApi = logTextGrid
+        searchInput = document.getElementById('log-search-input')
+    }
+
+    const hasFilter = gridApi && gridApi.getFilterModel() && Object.keys(gridApi.getFilterModel()).length > 0
+    const hasSearch = searchInput && searchInput.value.trim().length > 0
+
+    document.getElementById('filter-reset-button').disabled = !(hasFilter || hasSearch)
+}
+
+recordsGrid.addEventListener('filterChanged', onFilterChanged)
+manifestGrid.addEventListener('filterChanged', onFilterChanged)
+logTextGrid.addEventListener('filterChanged', onFilterChanged)
 
 let processingTime = null
 listen('processing_started', () => {
@@ -446,6 +471,7 @@ function resetFilter() {
         searchInput.value = ''
         searchInput.dispatchEvent(new Event('input'))
     }
+    updateFilterResetButtonState()
 }
 
 document.querySelector('#filter-reset-button').addEventListener('click', () => {
@@ -496,6 +522,7 @@ function showTab(tabId) {
 
     document.getElementById(`${tabId}-button`).classList.add('active-tab-button')
     updateRowCount()
+    updateFilterResetButtonState()
 }
 
 function updateRowCount() {
