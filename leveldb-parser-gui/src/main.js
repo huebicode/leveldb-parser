@@ -115,14 +115,16 @@ function showValuePopup(value) {
     if (!allTerms) {
         popupContent.textContent = value
     } else {
-        // escape HTML and highlight search phrase
+        // escape HTML and highlight search words individually
         let html = escapeHtml(value)
 
-        const phrase = allTerms.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        if (phrase) {
-            const regex = new RegExp(phrase, 'gi')
+        const words = allTerms.split(/\s+/).filter(word => word.length > 0)
+
+        words.forEach(word => {
+            const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const regex = new RegExp(escapedWord, 'gi')
             html = html.replace(regex, match => `<mark>${match}</mark>`)
-        }
+        })
 
         popupContent.innerHTML = html
     }
@@ -437,7 +439,28 @@ document.querySelectorAll('[id$="search-input"]').forEach(inputElement => {
         // debounce
         searchTimeout = setTimeout(() => {
             searchFrame = requestAnimationFrame(() => {
-                gridApi.setGridOption('quickFilterText', this.value)
+                const searchValue = this.value.trim()
+
+                if (searchValue) {
+                    // custom filter function for phrase search
+                    gridApi.setGridOption('isExternalFilterPresent', () => true)
+                    gridApi.setGridOption('doesExternalFilterPass', (node) => {
+                        const data = node.data
+                        const searchLower = searchValue.toLowerCase()
+
+                        // check if any field contains the exact phrase
+                        return Object.values(data).some(value => {
+                            if (value === null || value === undefined) return false
+                            return String(value).toLowerCase().includes(searchLower)
+                        })
+                    })
+                    gridApi.onFilterChanged()
+                } else {
+                    // clear external filter
+                    gridApi.setGridOption('isExternalFilterPresent', () => false)
+                    gridApi.onFilterChanged()
+                }
+
                 gridApi.setGridOption('loading', false)
             })
         }, 300)
