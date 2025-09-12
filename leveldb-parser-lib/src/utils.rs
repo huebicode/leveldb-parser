@@ -38,11 +38,11 @@ pub fn bytes_to_ascii(bytes: &[u8]) -> String {
         .collect()
 }
 
-pub fn bytes_to_latin1_with_hex(bytes: &[u8]) -> String {
+pub fn bytes_to_ascii_with_hex(bytes: &[u8]) -> String {
     bytes
         .iter()
         .map(|&b| {
-            if b.is_ascii_graphic() || b == 0x20 || b >= 0xA0 {
+            if b.is_ascii_graphic() || b == 0x20 {
                 (b as char).to_string()
             } else {
                 format!("\\x{:02X}", b)
@@ -50,6 +50,19 @@ pub fn bytes_to_latin1_with_hex(bytes: &[u8]) -> String {
         })
         .collect()
 }
+
+// pub fn bytes_to_latin1_with_hex(bytes: &[u8]) -> String {
+//     bytes
+//         .iter()
+//         .map(|&b| {
+//             if b.is_ascii_graphic() || b == 0x20 || b >= 0xA0 {
+//                 (b as char).to_string()
+//             } else {
+//                 format!("\\x{:02X}", b)
+//             }
+//         })
+//         .collect()
+// }
 
 pub fn bytes_to_utf8_lossy(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes)

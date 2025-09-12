@@ -126,7 +126,7 @@ pub fn parse_file(file_path: &str) -> io::Result<LdbFile> {
             record.block_handle.offset,
             record.block_handle.size,
         )?;
-        let name = utils::bytes_to_latin1_with_hex(&record.key);
+        let name = utils::bytes_to_ascii_with_hex(&record.key);
         let bloom_filter = if name == "filter.leveldb.BuiltinBloomFilter2" {
             Some(parse_bloom_filter_block(&meta_raw.data)?)
         } else {
@@ -420,7 +420,7 @@ pub mod display {
             writeln!(
                 io::stdout(),
                 "FilterName: {}\nBlockHandle: Offset: {}, Size: {}",
-                utils::bytes_to_latin1_with_hex(&record.key),
+                utils::bytes_to_ascii_with_hex(&record.key),
                 record.block_handle.offset,
                 record.block_handle.size
             )?;
@@ -463,7 +463,7 @@ pub mod display {
             writeln!(
                 io::stdout(),
                 "SeparatorKey: {}\nBlockHandle: Offset: {}, Size: {}",
-                utils::bytes_to_latin1_with_hex(&record.key),
+                utils::bytes_to_ascii_with_hex(&record.key),
                 record.block_handle.offset,
                 record.block_handle.size
             )?;
@@ -511,14 +511,14 @@ pub mod display {
             block_offset + record.entry.key_offset,
             record.entry.shared_len,
             record.entry.inline_len,
-            utils::bytes_to_latin1_with_hex(&record.key),
+            utils::bytes_to_ascii_with_hex(&record.key),
         )?;
         writeln!(
             io::stdout(),
             "Val (Offset: {}, Size: {}): '{}'",
             block_offset + record.entry.val_offset,
             record.entry.value_len,
-            utils::bytes_to_latin1_with_hex(&record.value)
+            utils::bytes_to_ascii_with_hex(&record.value)
         )?;
 
         Ok(())

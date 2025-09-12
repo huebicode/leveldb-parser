@@ -87,7 +87,10 @@ function escapeHtml(text) {
     })
 }
 
+const popupTimeElem = document.getElementById('popup-time').getElementsByTagName('span')[0] // TODO: remove later
 function showValuePopup(value) {
+    const startTime = performance.now() // TODO: measure processing time to open the popup, remove later
+
     const activeTabButton = document.querySelector('.active-tab-button')
 
     let searchTerm = ''
@@ -115,20 +118,24 @@ function showValuePopup(value) {
     if (!allTerms) {
         popupContent.textContent = value
     } else {
-        // escape HTML and highlight search words individually
+        // escape HTML and highlight the whole phrase
         let html = escapeHtml(value)
 
-        const words = allTerms.split(/\s+/).filter(word => word.length > 0)
-
-        words.forEach(word => {
-            const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-            const regex = new RegExp(escapedWord, 'gi')
-            html = html.replace(regex, match => `<mark>${match}</mark>`)
-        })
+        const escapedPhrase = allTerms.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const regex = new RegExp(escapedPhrase, 'gi')
+        html = html.replace(regex, match => `<mark>${match}</mark>`)
 
         popupContent.innerHTML = html
     }
     valuePopup.style.display = 'flex'
+
+    // TODO: measure processing time to open the popup, remove later
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const endTime = performance.now()
+            popupTimeElem.textContent = ((endTime - startTime) / 1000).toFixed(2)
+        })
+    })
 }
 
 // records-grid ----------------------------------------------------------------
@@ -401,6 +408,7 @@ function getFocusedCellValue(gridApi) {
 // search inputs (quick filter)
 let searchTimeout = null
 let searchFrame = null
+const searchTimeElem = document.getElementById('search-time').getElementsByTagName('span')[0] // TODO: remove later
 document.querySelectorAll('[id$="search-input"]').forEach(inputElement => {
     const prefix = inputElement.id.replace('-search-input', '')
     const inputContainer = inputElement.closest('.input-container')
@@ -423,6 +431,8 @@ document.querySelectorAll('[id$="search-input"]').forEach(inputElement => {
     }
 
     inputElement.addEventListener('input', function () {
+        const searchStartTime = performance.now() // TODO: measure search time, remove later
+
         gridApi.setGridOption('loading', true)
 
         if (clearButton) {
@@ -462,6 +472,12 @@ document.querySelectorAll('[id$="search-input"]').forEach(inputElement => {
                 }
 
                 gridApi.setGridOption('loading', false)
+
+                // TODO: Measure search time after filtering is complete, remove later
+                requestAnimationFrame(() => {
+                    const searchEndTime = performance.now()
+                    searchTimeElem.textContent = ((searchEndTime - searchStartTime) / 1000).toFixed(2)
+                })
             })
         }, 300)
     })
