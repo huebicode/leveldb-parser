@@ -1,5 +1,5 @@
 # LevelDB Parser
-LevelDB is a key/value database from Google, used among other things in Chromium-based browsers and applications (such as Electron). This project is part of my master’s thesis in digital forensics at *Hochschule Albstadt-Sigmaringen*, Germany, which involves developing a parser (CLI/GUI) for LevelDB. The final thesis will be uploaded here after completion.
+[LevelDB](https://github.com/google/leveldb) is a key/value database from Google, used among other things in Chromium-based browsers and applications (such as Electron). This project is part of my master’s thesis in digital forensics at *Hochschule Albstadt-Sigmaringen*, Germany, which involves developing a parser (CLI/GUI) for LevelDB. The final thesis will be uploaded here after completion.
 
 ## Project Goal
 
@@ -24,15 +24,40 @@ Implemented features:
 - [x] GUI
 
 ## GUI
-<img alt="leveldbgui-interface" src="https://github.com/user-attachments/assets/2636cebe-46da-455e-aeca-94a34e35eca1" />
+`leveldb-parser-gui` can accept both individual files and folders, which are processed recursively.
+
+<img alt="leveldbgui-interface" src="https://github.com/user-attachments/assets/fa7f870a-567a-42f4-b83d-1af49186eacd" />
+
 
 ## CLI
-`leveldb-parser-cli` can parse `.log`, `.ldb` or `MANIFEST` files. 
+`leveldb-parser-cli` can parse single `.log`, `.ldb` or `MANIFEST` files. 
 
 ### Usage
 `leveldb-parser-cli [-a] <file>`
 
-Default output is CSV with key/value information. Option `-a` will output all available details.
+Default output is CSV with key/value information:
+```
+"seq","state","key","value"
+"1","Live","Mozart","Eine kleine Nachtmusik"
+"2","Live","Bach","Air"
+"3","Live","Vivaldi","Le quattro stagioni"
+```
+
+Option `-a` will output all available details including meta data:
+```
+########## [ Block 1 (Offset: 0)] ############
+------------------- Header -------------------
+CRC32C: 1A2B3C4D (verified)
+Data-Length: 46 Bytes
+Record-Type: 1 (Full)
+//////////////// Batch Header ////////////////
+Seq: 1
+Records: 1
+****************** Record 1 ******************
+Seq: 1, State: 1 (Live)
+Key (Offset: 21, Size: 9): 'Mozart'
+Val (Offset: 31, Size: 22): 'Eine kleine Nachtmusik'
+```
 
 ## Build
 Pre-built binaries are available under [Releases](https://github.com/huebicode/leveldb-parser/releases).
