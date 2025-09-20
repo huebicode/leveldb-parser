@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, BufReader, Cursor, Read, Seek, Write};
+use std::io::{self, BufReader, Cursor, Read, Seek, SeekFrom, Write};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
@@ -54,13 +54,18 @@ pub fn parse_file(file_path: &str) -> io::Result<LogFile> {
     let mut first_block_offset = 0;
 
     while reader.stream_position()? < file_size {
-        let block = read_raw_block(&mut reader)?;
+        let block = match read_raw_block(&mut reader) {
+            Ok(b) => b,
+            Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
+            Err(e) => return Err(e),
+        };
 
         match block.block_type {
             1 => {
                 // Full Block
-                let batch = parse_batch(&block.data, block.offset)?;
-                batches.push(batch);
+                if let Ok(batch) = parse_batch(&block.data, block.offset) {
+                    batches.push(batch);
+                }
             }
             2 => {
                 // First Block
@@ -70,16 +75,21 @@ pub fn parse_file(file_path: &str) -> io::Result<LogFile> {
             }
             3 => {
                 // Middle Block
-                partial_block_data.extend_from_slice(&block.data);
+                if !partial_block_data.is_empty() {
+                    partial_block_data.extend_from_slice(&block.data);
+                }
             }
             4 => {
                 // Last Block
-                partial_block_data.extend_from_slice(&block.data);
-                let batch = parse_batch(&partial_block_data, first_block_offset)?;
-                batches.push(batch);
-                partial_block_data.clear();
+                if !partial_block_data.is_empty() {
+                    partial_block_data.extend_from_slice(&block.data);
+                    if let Ok(batch) = parse_batch(&partial_block_data, first_block_offset) {
+                        batches.push(batch);
+                    }
+                    partial_block_data.clear();
+                }
             }
-            _ => {} // Zero Block or Unknown Type - no batch
+            _ => {} // Zero Block or Unknown Type => ignore
         }
 
         blocks.push(block);
@@ -89,25 +99,49 @@ pub fn parse_file(file_path: &str) -> io::Result<LogFile> {
 }
 // -----------------------------------------------------------------------------
 pub fn read_raw_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
-    let offset = reader.stream_position()?;
+    loop {
+        let offset = reader.stream_position()?;
+        let pos_in_block = offset % BLOCK_SIZE;
+        let bytes_left = BLOCK_SIZE - pos_in_block;
 
-    let crc = reader.read_u32::<LittleEndian>()?;
-    let data_len = reader.read_u16::<LittleEndian>()?;
-    let block_type = reader.read_u8()?;
+        // not enough space for a header => skip trailer to next 32 KiB boundary.
+        if bytes_left < HEADER_SIZE {
+            reader.seek(SeekFrom::Current(bytes_left as i64))?;
+            continue;
+        }
 
-    let mut data = vec![0; data_len as usize];
-    reader.read_exact(&mut data)?;
+        // read header
+        let crc = reader.read_u32::<LittleEndian>()?;
+        let data_len = reader.read_u16::<LittleEndian>()? as u64;
+        let block_type = reader.read_u8()?;
 
-    let crc_valid = utils::crc_verified(crc, &data, block_type, false);
+        // padding / trailer marker
+        if data_len == 0 && block_type == 0 {
+            reader.seek(SeekFrom::Current((bytes_left - HEADER_SIZE) as i64))?;
+            continue;
+        }
 
-    Ok(Block {
-        offset,
-        crc,
-        crc_valid,
-        data_len,
-        block_type,
-        data,
-    })
+        // declared payload would cross boundary => skip rest of this 32 KiB chunk
+        if HEADER_SIZE + data_len > bytes_left {
+            reader.seek(SeekFrom::Current((bytes_left - HEADER_SIZE) as i64))?;
+            continue;
+        }
+
+        // read payload
+        let mut data = vec![0u8; data_len as usize];
+        reader.read_exact(&mut data)?;
+
+        let crc_valid = utils::crc_verified(crc, &data, block_type, false);
+
+        return Ok(Block {
+            offset,
+            crc,
+            crc_valid,
+            data_len: data_len as u16,
+            block_type,
+            data,
+        });
+    }
 }
 
 fn parse_batch(data: &[u8], offset: u64) -> io::Result<Batch> {
