@@ -1,5 +1,6 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StorageKind {
+    SessionStorage,
     LocalStorage,
     IndexedDb,
     Generic,
@@ -7,90 +8,135 @@ pub enum StorageKind {
 
 pub fn detect_storage_kind(path: &str) -> StorageKind {
     let lower = path.to_ascii_lowercase();
-    if lower.contains("local storage") {
-        println!("Detected LocalStorage from file path");
-        StorageKind::LocalStorage
-    } else if lower.contains("indexeddb") {
-        println!("Detected IndexedDb from file path");
-        StorageKind::IndexedDb
-    } else {
-        println!("Detected Generic storage from file path");
-        StorageKind::Generic
+    match () {
+        _ if lower.contains("local storage") => StorageKind::LocalStorage,
+        _ if lower.contains("session storage") => StorageKind::SessionStorage,
+        _ if lower.contains("indexeddb") => StorageKind::IndexedDb,
+        _ => StorageKind::Generic,
     }
 }
 
-pub fn decode_storage_bytes(kind: StorageKind, bytes: &[u8]) -> String {
+pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String, String) {
     match kind {
+        StorageKind::SessionStorage => {
+            let k = bytes_to_utf8_lossy(key);
+            let v = match value {
+                Some(v_bytes) => {
+                    if k.starts_with("map-") {
+                        if let Some(s) = try_utf16le(v_bytes) {
+                            s
+                        } else {
+                            bytes_to_utf8_lossy(v_bytes)
+                        }
+                    } else {
+                        bytes_to_utf8_lossy(v_bytes)
+                    }
+                }
+                None => String::new(),
+            };
+            (k, v)
+        }
         StorageKind::LocalStorage => {
-            if let Some(decoded) = decode_local_storage_bytes(bytes) {
-                decoded
+            let is_entry = key.starts_with(b"_");
+
+            let k = if is_entry {
+                decode_local_storage_entry(key)
             } else {
-                bytes_to_utf8_lossy(bytes)
-            }
+                bytes_to_latin1_hex_escaped(key)
+            };
+            let v = match value {
+                Some(v_bytes) => {
+                    if is_entry {
+                        decode_local_storage_entry(v_bytes)
+                    } else {
+                        bytes_to_hex(v_bytes)
+                    }
+                }
+                None => String::new(),
+            };
+            (k, v)
         }
         StorageKind::IndexedDb => {
-            println!("Decoding as IndexedDb");
-            let utf8 = bytes_to_utf8_lossy(bytes);
-            if !utf8.is_empty() {
-                utf8
-            } else {
-                bytes_to_ascii_with_hex(bytes)
-            }
+            todo!()
         }
         StorageKind::Generic => {
-            println!("Decoding as Generic");
-            bytes_to_ascii_with_hex(bytes)
+            let k = bytes_to_utf8_lossy(key);
+            let v = match value {
+                Some(v_bytes) => bytes_to_utf8_lossy(v_bytes),
+                None => String::new(),
+            };
+            (k, v)
         }
     }
 }
 
-fn decode_local_storage_bytes(bytes: &[u8]) -> Option<String> {
-    // check if key
+fn decode_local_storage_entry(bytes: &[u8]) -> String {
     if bytes.starts_with(b"_") {
-        let delim_pos = bytes.iter().position(|&b| b == 0x00)?;
+        // key
+        let delim_pos = match bytes.iter().position(|&b| b == 0x00) {
+            Some(p) => p,
+            None => return bytes_to_latin1_hex_escaped(bytes), // fallback without delimiter
+        };
         if delim_pos + 1 >= bytes.len() {
             // key prefix only
-            if let Ok(key_str) = std::str::from_utf8(&bytes[..delim_pos]) {
-                return Some(key_str.to_string());
-            } else {
-                return None;
-            }
+            return bytes_to_latin1_hex_escaped(bytes);
         }
 
-        // get the key
+        // decode key
         let key_prefix = &bytes[..delim_pos];
-        let flag = bytes[delim_pos + 1];
-        let key_remainder = &bytes[delim_pos + 2..];
+        let encoding_flag = bytes[delim_pos + 1];
+        let key_entry = &bytes[delim_pos + 2..];
 
-        let key = match flag {
+        let key = match encoding_flag {
             0x00 => {
                 // UTF-16LE
-                println!("Decoding as UTF-16LE");
-                if let Some(s) = try_utf16le(key_remainder) {
-                    format!("{} {}", bytes_to_utf8_lossy(key_prefix), s)
+                if let Some(entry) = try_utf16le(key_entry) {
+                    format!("{} {}", bytes_to_latin1_hex_escaped(key_prefix), entry)
                 } else {
-                    return None; // TODO: fallback?
+                    bytes_to_latin1_hex_escaped(bytes) // fallback
                 }
             }
             0x01 => {
                 // Latin-1
-                println!("Decoding as Latin-1");
                 format!(
                     "{} {}",
-                    bytes_to_utf8_lossy(key_prefix),
-                    bytes_to_latin1(key_remainder)
+                    bytes_to_latin1_hex_escaped(key_prefix),
+                    bytes_to_latin1_hex_escaped(key_entry)
                 )
             }
-            _ => {
-                // unknown flag => fallback
-                bytes_to_utf8_lossy(bytes)
-            }
+            _ => bytes_to_latin1_hex_escaped(bytes), // unknown flag => fallback
         };
 
-        return Some(key);
-    } //TODO: check if value, starts with 0x00 or 0x01
+        return key;
+    } else if bytes.starts_with(&[0x00]) || bytes.starts_with(&[0x01]) {
+        // value
+        let encoding_flag = bytes[0];
+        let value_entry = &bytes[1..];
 
-    None
+        let value = match encoding_flag {
+            0x00 => {
+                // UTF-16LE
+                if let Some(entry) = try_utf16le(value_entry) {
+                    entry
+                } else {
+                    bytes_to_latin1_hex_escaped(value_entry) // fallback
+                }
+            }
+            0x01 => {
+                // Latin-1
+                bytes_to_latin1_hex_escaped(value_entry)
+            }
+            _ => bytes_to_latin1_hex_escaped(value_entry), // unknown flag => fallback
+        };
+
+        return value;
+    }
+
+    bytes_to_latin1_hex_escaped(bytes) // fallback
+}
+
+fn bytes_to_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("\\x{:02X}", b)).collect()
 }
 
 pub fn bytes_to_ascii(bytes: &[u8]) -> String {
@@ -119,22 +165,18 @@ pub fn bytes_to_ascii_with_hex(bytes: &[u8]) -> String {
         .collect()
 }
 
-fn bytes_to_latin1(bytes: &[u8]) -> String {
-    bytes.iter().map(|&b| b as char).collect()
+fn bytes_to_latin1_hex_escaped(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|&b| {
+            if b.is_ascii_graphic() || b == 0x20 || b >= 0xA0 {
+                (b as char).to_string()
+            } else {
+                format!("\\x{:02X}", b)
+            }
+        })
+        .collect()
 }
-
-// pub fn bytes_to_latin1_with_hex(bytes: &[u8]) -> String {
-//     bytes
-//         .iter()
-//         .map(|&b| {
-//             if b.is_ascii_graphic() || b == 0x20 || b >= 0xA0 {
-//                 (b as char).to_string()
-//             } else {
-//                 format!("\\x{:02X}", b)
-//             }
-//         })
-//         .collect()
-// }
 
 pub fn bytes_to_utf8_lossy(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes)

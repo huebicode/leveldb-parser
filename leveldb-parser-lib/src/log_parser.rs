@@ -13,6 +13,7 @@ const HEADER_SIZE: u64 = 7; // CRC + Data Length + Block Type
 pub struct LogFile {
     pub blocks: Vec<Block>,
     pub batches: Vec<Batch>,
+    pub storage_kind: decoder::StorageKind,
 }
 
 pub struct Block {
@@ -48,6 +49,8 @@ pub fn parse_file(file_path: &str) -> io::Result<LogFile> {
     let file = File::open(file_path)?;
     let file_size = file.metadata()?.len();
     let mut reader = BufReader::new(file);
+
+    let storage_kind = decoder::detect_storage_kind(file_path);
 
     let mut blocks = Vec::new();
     let mut batches = Vec::new();
@@ -96,7 +99,11 @@ pub fn parse_file(file_path: &str) -> io::Result<LogFile> {
         blocks.push(block);
     }
 
-    Ok(LogFile { blocks, batches })
+    Ok(LogFile {
+        blocks,
+        batches,
+        storage_kind,
+    })
 }
 // -----------------------------------------------------------------------------
 pub fn read_raw_block(reader: &mut (impl Read + Seek)) -> io::Result<Block> {
@@ -387,15 +394,10 @@ pub mod display {
                     _ => "Unknown",
                 };
 
-                let key_str = decoder::bytes_to_ascii_with_hex(&record.key);
+                let (key_str, value_str) =
+                    decoder::decode_kv(log.storage_kind, &record.key, record.value.as_deref());
                 let key_str = key_str.replace("\"", "\"\"");
-
-                let value_str = if let Some(value) = &record.value {
-                    let vs = decoder::bytes_to_ascii_with_hex(value);
-                    vs.replace("\"", "\"\"")
-                } else {
-                    "".to_string()
-                };
+                let value_str = value_str.replace("\"", "\"\"");
 
                 writeln!(
                     io::stdout(),
@@ -437,13 +439,10 @@ pub mod export {
                     _ => "unknown",
                 };
 
-                let key_str = decoder::bytes_to_utf8_lossy(&record.key).replace("\"", "\"\"");
-
-                let value_str = if let Some(value) = &record.value {
-                    decoder::bytes_to_utf8_lossy(value).replace("\"", "\"\"")
-                } else {
-                    "".to_string()
-                };
+                let (key_str, value_str) =
+                    decoder::decode_kv(log.storage_kind, &record.key, record.value.as_deref());
+                let key_str = key_str.replace("\"", "\"\"");
+                let value_str = value_str.replace("\"", "\"\"");
 
                 csv.push_str(&format!(
                     "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",

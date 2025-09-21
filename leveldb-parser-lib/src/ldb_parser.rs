@@ -598,17 +598,13 @@ pub mod display {
                     _ => "Unknown",
                 };
 
-                // let key_str = utils::bytes_to_ascii_with_hex(&record.key);
-                // let key_str = key_str.replace("\"", "\"\"");
-
-                // let value_str = utils::bytes_to_ascii_with_hex(&record.value);
-                // let value_str = value_str.replace("\"", "\"\"");
-
-                let key_str = decoder::decode_storage_bytes(ldb.storage_kind, &record.key)
-                    .replace("\"", "\"\"");
-
-                let value_str = decoder::decode_storage_bytes(ldb.storage_kind, &record.value)
-                    .replace("\"", "\"\"");
+                let (key_str, value_str) = decoder::decode_kv(
+                    ldb.storage_kind,
+                    &record.key,
+                    (record.state != 0).then(|| record.value.as_slice()),
+                );
+                let key_str = key_str.replace("\"", "\"\"");
+                let value_str = value_str.replace("\"", "\"\"");
 
                 writeln!(
                     io::stdout(),
@@ -648,8 +644,13 @@ pub mod export {
                     _ => "unknown",
                 };
 
-                let key_str = decoder::bytes_to_utf8_lossy(&record.key).replace("\"", "\"\"");
-                let value_str = decoder::bytes_to_utf8_lossy(&record.value).replace("\"", "\"\"");
+                let (key_str, value_str) = decoder::decode_kv(
+                    ldb.storage_kind,
+                    &record.key,
+                    (record.state != 0).then(|| record.value.as_slice()),
+                );
+                let key_str = key_str.replace("\"", "\"\"");
+                let value_str = value_str.replace("\"", "\"\"");
 
                 csv.push_str(&format!(
                     "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
