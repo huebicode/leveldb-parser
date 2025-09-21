@@ -3,6 +3,7 @@ use std::io::{self, BufReader, Cursor, Read, Seek, Write};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
+use crate::decoder;
 use crate::utils;
 
 // -----------------------------------------------------------------------------
@@ -12,6 +13,7 @@ pub struct LdbFile {
     pub index_block: IndexBlock,
     pub meta_blocks: Vec<MetaBlock>,
     pub data_blocks: Vec<DataBlock>,
+    pub storage_kind: decoder::StorageKind,
 }
 
 pub struct Footer {
@@ -89,6 +91,8 @@ pub fn parse_file(file_path: &str) -> io::Result<LdbFile> {
     let file = File::open(file_path)?;
     let mut reader = BufReader::new(file);
 
+    let storage_kind = decoder::detect_storage_kind(file_path);
+
     // Footer
     let footer = read_footer(&mut reader)?;
 
@@ -126,7 +130,7 @@ pub fn parse_file(file_path: &str) -> io::Result<LdbFile> {
             record.block_handle.offset,
             record.block_handle.size,
         )?;
-        let name = utils::bytes_to_ascii_with_hex(&record.key);
+        let name = decoder::bytes_to_ascii_with_hex(&record.key);
         let bloom_filter = if name == "filter.leveldb.BuiltinBloomFilter2" {
             Some(parse_bloom_filter_block(&meta_raw.data)?)
         } else {
@@ -203,6 +207,7 @@ pub fn parse_file(file_path: &str) -> io::Result<LdbFile> {
         index_block,
         meta_blocks,
         data_blocks,
+        storage_kind,
     })
 }
 
@@ -420,7 +425,7 @@ pub mod display {
             writeln!(
                 io::stdout(),
                 "FilterName: {}\nBlockHandle: Offset: {}, Size: {}",
-                utils::bytes_to_ascii_with_hex(&record.key),
+                decoder::bytes_to_ascii_with_hex(&record.key),
                 record.block_handle.offset,
                 record.block_handle.size
             )?;
@@ -463,7 +468,7 @@ pub mod display {
             writeln!(
                 io::stdout(),
                 "SeparatorKey: {}\nBlockHandle: Offset: {}, Size: {}",
-                utils::bytes_to_ascii_with_hex(&record.key),
+                decoder::bytes_to_ascii_with_hex(&record.key),
                 record.block_handle.offset,
                 record.block_handle.size
             )?;
@@ -511,14 +516,14 @@ pub mod display {
             block_offset + record.entry.key_offset,
             record.entry.shared_len,
             record.entry.inline_len,
-            utils::bytes_to_ascii_with_hex(&record.key),
+            decoder::bytes_to_ascii_with_hex(&record.key),
         )?;
         writeln!(
             io::stdout(),
             "Val (Offset: {}, Size: {}): '{}'",
             block_offset + record.entry.val_offset,
             record.entry.value_len,
-            utils::bytes_to_ascii_with_hex(&record.value)
+            decoder::bytes_to_ascii_with_hex(&record.value)
         )?;
 
         Ok(())
@@ -593,11 +598,17 @@ pub mod display {
                     _ => "Unknown",
                 };
 
-                let key_str = utils::bytes_to_utf8_lossy(&record.key);
-                let key_str = key_str.replace("\"", "\"\"");
+                // let key_str = utils::bytes_to_ascii_with_hex(&record.key);
+                // let key_str = key_str.replace("\"", "\"\"");
 
-                let value_str = utils::bytes_to_utf8_lossy(&record.value);
-                let value_str = value_str.replace("\"", "\"\"");
+                // let value_str = utils::bytes_to_ascii_with_hex(&record.value);
+                // let value_str = value_str.replace("\"", "\"\"");
+
+                let key_str = decoder::decode_storage_bytes(ldb.storage_kind, &record.key)
+                    .replace("\"", "\"\"");
+
+                let value_str = decoder::decode_storage_bytes(ldb.storage_kind, &record.value)
+                    .replace("\"", "\"\"");
 
                 writeln!(
                     io::stdout(),
@@ -637,8 +648,8 @@ pub mod export {
                     _ => "unknown",
                 };
 
-                let key_str = utils::bytes_to_utf8_lossy(&record.key).replace("\"", "\"\"");
-                let value_str = utils::bytes_to_utf8_lossy(&record.value).replace("\"", "\"\"");
+                let key_str = decoder::bytes_to_utf8_lossy(&record.key).replace("\"", "\"\"");
+                let value_str = decoder::bytes_to_utf8_lossy(&record.value).replace("\"", "\"\"");
 
                 csv.push_str(&format!(
                     "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",

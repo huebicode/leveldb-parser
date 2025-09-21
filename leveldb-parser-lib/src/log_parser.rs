@@ -3,6 +3,7 @@ use std::io::{self, BufReader, Cursor, Read, Seek, SeekFrom, Write};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
+use crate::decoder;
 use crate::utils;
 
 // -----------------------------------------------------------------------------
@@ -358,7 +359,7 @@ pub mod display {
             "Key (Offset: {}, Size: {}): '{}'",
             record.key_offset,
             record.key.len(),
-            utils::bytes_to_ascii_with_hex(&record.key)
+            decoder::bytes_to_ascii_with_hex(&record.key)
         )?;
 
         if let (Some(value), Some(value_offset)) = (&record.value, record.value_offset) {
@@ -367,7 +368,7 @@ pub mod display {
                 "Val (Offset: {}, Size: {}): '{}'",
                 value_offset,
                 value.len(),
-                utils::bytes_to_ascii_with_hex(value)
+                decoder::bytes_to_ascii_with_hex(value)
             )?;
         }
 
@@ -386,11 +387,11 @@ pub mod display {
                     _ => "Unknown",
                 };
 
-                let key_str = utils::bytes_to_ascii_with_hex(&record.key);
+                let key_str = decoder::bytes_to_ascii_with_hex(&record.key);
                 let key_str = key_str.replace("\"", "\"\"");
 
                 let value_str = if let Some(value) = &record.value {
-                    let vs = utils::bytes_to_ascii_with_hex(value);
+                    let vs = decoder::bytes_to_ascii_with_hex(value);
                     vs.replace("\"", "\"\"")
                 } else {
                     "".to_string()
@@ -436,10 +437,10 @@ pub mod export {
                     _ => "unknown",
                 };
 
-                let key_str = utils::bytes_to_utf8_lossy(&record.key).replace("\"", "\"\"");
+                let key_str = decoder::bytes_to_utf8_lossy(&record.key).replace("\"", "\"\"");
 
                 let value_str = if let Some(value) = &record.value {
-                    utils::bytes_to_utf8_lossy(value).replace("\"", "\"\"")
+                    decoder::bytes_to_utf8_lossy(value).replace("\"", "\"\"")
                 } else {
                     "".to_string()
                 };

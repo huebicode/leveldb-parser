@@ -1,3 +1,4 @@
+pub mod decoder;
 pub mod ldb_parser;
 pub mod log_parser;
 pub mod log_text_parser;

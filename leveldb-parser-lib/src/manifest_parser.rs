@@ -3,6 +3,7 @@ use std::io::{self, BufReader, Cursor, Seek};
 
 use byteorder::ReadBytesExt;
 
+use crate::decoder;
 use crate::log_parser;
 use crate::utils;
 
@@ -222,7 +223,7 @@ pub mod display {
                 writeln!(
                     io::stdout(),
                     "[1] Comparator: {}",
-                    utils::bytes_to_ascii_with_hex(value)
+                    decoder::bytes_to_ascii_with_hex(value)
                 )
             }
             ManifestEntry::LogNumber(log_no) => {
@@ -244,7 +245,7 @@ pub mod display {
                     io::stdout(),
                     "[5] CompactPointer: Level: {}, Key: {} @ {} : {}",
                     level,
-                    utils::bytes_to_ascii_with_hex(key),
+                    decoder::bytes_to_ascii_with_hex(key),
                     seq,
                     state
                 )
@@ -274,10 +275,10 @@ pub mod display {
                     level,
                     file_no,
                     file_size,
-                    utils::bytes_to_ascii_with_hex(sm_key),
+                    decoder::bytes_to_ascii_with_hex(sm_key),
                     sm_seq,
                     sm_state,
-                    utils::bytes_to_ascii_with_hex(lg_key),
+                    decoder::bytes_to_ascii_with_hex(lg_key),
                     lg_seq,
                     lg_state
                 )
@@ -299,7 +300,7 @@ pub mod display {
             for entry in &entry_set.entries {
                 let (tag, value) = match entry {
                     ManifestEntry::Comparator(value) => {
-                        ("Comparator", utils::bytes_to_ascii_with_hex(value))
+                        ("Comparator", decoder::bytes_to_ascii_with_hex(value))
                     }
                     ManifestEntry::LogNumber(log_no) => ("LogNumber", format!("{}", log_no)),
                     ManifestEntry::NextFileNumber(next_file_no) => {
@@ -316,7 +317,7 @@ pub mod display {
                         format!(
                             "Level: {}, Key: {} @ {} : {}",
                             level,
-                            utils::bytes_to_ascii_with_hex(key),
+                            decoder::bytes_to_ascii_with_hex(key),
                             seq,
                             state
                         ),
@@ -341,10 +342,10 @@ pub mod display {
                             level,
                             file_no,
                             file_size,
-                            utils::bytes_to_ascii_with_hex(sm_key),
+                            decoder::bytes_to_ascii_with_hex(sm_key),
                             sm_seq,
                             sm_state,
-                            utils::bytes_to_ascii_with_hex(lg_key),
+                            decoder::bytes_to_ascii_with_hex(lg_key),
                             lg_seq,
                             lg_state
                         ),
@@ -387,7 +388,7 @@ pub mod export {
             for entry in &entry_set.entries {
                 let (tag, value) = match entry {
                     ManifestEntry::Comparator(value) => {
-                        ("Comparator", utils::bytes_to_ascii_with_hex(value))
+                        ("Comparator", decoder::bytes_to_ascii_with_hex(value))
                     }
                     ManifestEntry::LogNumber(log_no) => ("LogNumber", format!("{}", log_no)),
                     ManifestEntry::NextFileNumber(next_file_no) => {
@@ -404,7 +405,7 @@ pub mod export {
                         format!(
                             "Level: {}, Key: {} @ {} : {}",
                             level,
-                            utils::bytes_to_ascii_with_hex(key),
+                            decoder::bytes_to_ascii_with_hex(key),
                             seq,
                             state
                         ),
@@ -429,10 +430,10 @@ pub mod export {
                             level,
                             file_no,
                             file_size,
-                            utils::bytes_to_ascii_with_hex(sm_key),
+                            decoder::bytes_to_ascii_with_hex(sm_key),
                             sm_seq,
                             sm_state,
-                            utils::bytes_to_ascii_with_hex(lg_key),
+                            decoder::bytes_to_ascii_with_hex(lg_key),
                             lg_seq,
                             lg_state
                         ),

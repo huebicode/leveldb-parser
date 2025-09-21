@@ -25,52 +25,6 @@ pub fn crc_verified(crc: u32, data_slice: &[u8], type_byte: u8, ldb_file_flag: b
     calculated_crc == unmasked_crc
 }
 
-pub fn bytes_to_ascii(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .map(|&b| {
-            if b.is_ascii_graphic() || b == 0x20 {
-                b as char
-            } else {
-                '.'
-            }
-        })
-        .collect()
-}
-
-pub fn bytes_to_ascii_with_hex(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .map(|&b| {
-            if b.is_ascii_graphic() || b == 0x20 {
-                (b as char).to_string()
-            } else {
-                format!("\\x{:02X}", b)
-            }
-        })
-        .collect()
-}
-
-// pub fn bytes_to_latin1_with_hex(bytes: &[u8]) -> String {
-//     bytes
-//         .iter()
-//         .map(|&b| {
-//             if b.is_ascii_graphic() || b == 0x20 || b >= 0xA0 {
-//                 (b as char).to_string()
-//             } else {
-//                 format!("\\x{:02X}", b)
-//             }
-//         })
-//         .collect()
-// }
-
-pub fn bytes_to_utf8_lossy(bytes: &[u8]) -> String {
-    String::from_utf8_lossy(bytes)
-        .chars()
-        .filter(|c| !c.is_control())
-        .collect()
-}
-
 pub fn decode_key(key: &[u8]) -> io::Result<(Vec<u8>, u8, u64)> {
     if key.len() < 8 {
         return Err(io::Error::new(io::ErrorKind::InvalidData, "Key too short"));
@@ -88,7 +42,6 @@ pub fn decode_key(key: &[u8]) -> io::Result<(Vec<u8>, u8, u64)> {
     Ok((user_key.to_vec(), status, sequence))
 }
 
-// varint ----------------------------------------------------------------------
 pub fn decode_varint(bytes: &[u8]) -> io::Result<u64> {
     let mut result: u64 = 0;
     let mut shift: u64 = 0;
