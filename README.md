@@ -1,5 +1,5 @@
 # LevelDB Parser
-[LevelDB](https://github.com/google/leveldb) is a key/value database from Google, used among other things in Chromium-based browsers and applications (such as Electron). This project is part of my master’s thesis in digital forensics at *Hochschule Albstadt-Sigmaringen*, Germany, which involves developing a parser (CLI/GUI) for LevelDB. The final thesis will be uploaded here after completion.
+[LevelDB](https://github.com/google/leveldb) is a key/value database from Google, used among other things in Chromium-based browsers and applications, such as Electron. This project is part of my master’s thesis in Digital Forensics at the University of Applied Sciences Albstadt-Sigmaringen, Germany, which involves developing a parser (CLI/GUI) for LevelDB. The final thesis will be uploaded here after completion.
 
 ## Project Goal
 
@@ -20,8 +20,9 @@ Implemented features:
 - [x] parse `.log` files
 - [x] parse `MANIFEST` files
 - [x] parse `.ldb` files
-- [x] CLI
-- [x] GUI
+- [x] CLI/GUI
+- [x] decode Web Storage
+- [ ] decode IndexedDB
 
 ## GUI
 `leveldb-parser-gui` can accept both individual files and folders, which are processed recursively.
@@ -39,24 +40,26 @@ Default output is CSV with key/value information:
 ```
 "seq","state","key","value"
 "1","Live","Mozart","Eine kleine Nachtmusik"
-"2","Live","Bach","Air"
-"3","Live","Vivaldi","Le quattro stagioni"
+"2","Live","Vivaldi","Le quattro stagioni"
+"3","Live","Bach","Air"
 ```
 
 Option `-a` will output all available details including meta data:
 ```
-########## [ Block 1 (Offset: 0)] ############
+########## [ Block 3 (Offset: 98)] ############
 ------------------- Header -------------------
-CRC32C: 1A2B3C4D (verified)
-Data-Length: 46 Bytes
+CRC32C: DC3ADC4D (verified)
+Data-Length: 22 Bytes
 Record-Type: 1 (Full)
+
 //////////////// Batch Header ////////////////
-Seq: 1
+Seq: 3
 Records: 1
+
 ****************** Record 1 ******************
-Seq: 1, State: 1 (Live)
-Key (Offset: 21, Size: 9): 'Mozart'
-Val (Offset: 31, Size: 22): 'Eine kleine Nachtmusik'
+Seq: 3, State: 1 (Live)
+Key (Offset: 119, Size: 4): '\x42\x61\x63\x68'
+Val (Offset: 124, Size: 3): '\x41\x69\x72'
 ```
 
 ## Build
