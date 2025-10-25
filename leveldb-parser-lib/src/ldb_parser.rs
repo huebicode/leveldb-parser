@@ -516,14 +516,14 @@ pub mod display {
             block_offset + record.entry.key_offset,
             record.entry.shared_len,
             record.entry.inline_len,
-            decoder::bytes_to_ascii_with_hex(&record.key),
+            decoder::bytes_to_hex(&record.key),
         )?;
         writeln!(
             io::stdout(),
             "Val (Offset: {}, Size: {}): '{}'",
             block_offset + record.entry.val_offset,
             record.entry.value_len,
-            decoder::bytes_to_ascii_with_hex(&record.value)
+            decoder::bytes_to_hex(&record.value)
         )?;
 
         Ok(())
@@ -601,7 +601,7 @@ pub mod display {
                 let (key_str, value_str) = decoder::decode_kv(
                     ldb.storage_kind,
                     &record.key,
-                    (record.state != 0).then(|| record.value.as_slice()),
+                    (record.state != 0).then_some(record.value.as_slice()),
                 );
                 let key_str = key_str.replace("\"", "\"\"");
                 let value_str = value_str.replace("\"", "\"\"");
@@ -647,7 +647,7 @@ pub mod export {
                 let (key_str, value_str) = decoder::decode_kv(
                     ldb.storage_kind,
                     &record.key,
-                    (record.state != 0).then(|| record.value.as_slice()),
+                    (record.state != 0).then_some(record.value.as_slice()),
                 );
                 let key_str = key_str.replace("\"", "\"\"");
                 let value_str = value_str.replace("\"", "\"\"");

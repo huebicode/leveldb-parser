@@ -366,7 +366,7 @@ pub mod display {
             "Key (Offset: {}, Size: {}): '{}'",
             record.key_offset,
             record.key.len(),
-            decoder::bytes_to_ascii_with_hex(&record.key)
+            decoder::bytes_to_hex(&record.key)
         )?;
 
         if let (Some(value), Some(value_offset)) = (&record.value, record.value_offset) {
@@ -375,7 +375,7 @@ pub mod display {
                 "Val (Offset: {}, Size: {}): '{}'",
                 value_offset,
                 value.len(),
-                decoder::bytes_to_ascii_with_hex(value)
+                decoder::bytes_to_hex(value)
             )?;
         }
 

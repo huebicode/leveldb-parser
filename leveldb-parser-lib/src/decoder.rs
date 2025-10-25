@@ -57,7 +57,29 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
             (k, v)
         }
         StorageKind::IndexedDb => {
-            todo!()
+            match key {
+                [_, _, _, 0x01, entry_type @ 0x00..=0x06, payload @ ..] => {
+                    // record entry
+                    let k = if *entry_type == 0x01 {
+                        decode_varint_utf16be(payload)
+                    } else {
+                        bytes_to_utf8_lossy(payload)
+                    };
+                    let v = match value {
+                        Some(v_bytes) => decode_indexeddb_entry(v_bytes),
+                        None => String::new(),
+                    };
+                    (k, v)
+                }
+                _ => {
+                    let k = bytes_to_utf8_lossy(key);
+                    let v = match value {
+                        Some(v_bytes) => bytes_to_utf8_lossy(v_bytes),
+                        None => String::new(),
+                    };
+                    (k, v)
+                }
+            }
         }
         StorageKind::Generic => {
             let k = bytes_to_utf8_lossy(key);
@@ -135,7 +157,239 @@ fn decode_local_storage_entry(bytes: &[u8]) -> String {
     bytes_to_latin1_hex_escaped(bytes) // fallback
 }
 
-fn bytes_to_hex(bytes: &[u8]) -> String {
+fn decode_indexeddb_entry(bytes: &[u8]) -> String {
+    // find two 0xFF sentinels in header
+    let mut i = 0;
+    let mut ff = 0;
+    while i < bytes.len() {
+        if bytes[i] == 0xFF {
+            ff += 1;
+            if ff == 2 {
+                i += 1; // move past second 0xFF
+                break;
+            }
+        }
+        i += 1;
+    }
+
+    // fallback
+    if ff < 2 || i >= bytes.len() {
+        return bytes_to_utf8_lossy(bytes);
+    }
+
+    // skip v8 version tag
+    if read_varint_len(bytes, &mut i).is_none() {
+        return bytes_to_utf8_lossy(bytes);
+    }
+
+    // skip padding zeros
+    while i < bytes.len() && bytes[i] == 0x00 {
+        i += 1;
+    }
+
+    // fallback
+    if i >= bytes.len() {
+        return bytes_to_utf8_lossy(bytes);
+    }
+
+    // context-aware formatter
+    #[derive(Debug)]
+    enum Ctx {
+        Object { expect_key: bool, first: bool },
+        Array { first: bool },
+    }
+
+    let mut out = String::new();
+    let mut stack: Vec<Ctx> = Vec::new();
+
+    // emit a scalar or delimiter in the correct spot, adding separators
+    fn emit(out: &mut String, stack: &mut [Ctx], s: &str) {
+        match stack.last_mut() {
+            Some(Ctx::Array { first }) => {
+                if !*first {
+                    out.push(',');
+                } else {
+                    *first = false;
+                }
+                out.push_str(s);
+            }
+            Some(Ctx::Object { expect_key, first }) => {
+                if *expect_key {
+                    if !*first {
+                        out.push(',');
+                    } else {
+                        *first = false;
+                    }
+                    out.push_str(s);
+                    out.push(':'); // "key:val"
+                    *expect_key = false; // next token is the value
+                } else {
+                    out.push_str(s); // value
+                    *expect_key = true; // next token is the next key
+                }
+            }
+            None => {
+                if !out.is_empty() {
+                    out.push(' ');
+                }
+                out.push_str(s);
+            }
+        }
+    }
+
+    while i < bytes.len() {
+        let tag = bytes[i];
+        i += 1; // consume tag
+
+        match tag {
+            0x00 | 0x2D => continue, // Padding | Array-Gap
+
+            // Primitive Values
+            0x5F => emit(&mut out, &mut stack, "\"undefined\""),
+            0x30 => emit(&mut out, &mut stack, "null"),
+            0x54 => emit(&mut out, &mut stack, "true"),
+            0x46 => emit(&mut out, &mut stack, "false"),
+
+            0x49 => {
+                // ZigZag Int32
+                let s = decode_tag_or_hex(bytes, &mut i, tag, handle_tag_0x49);
+                emit(&mut out, &mut stack, &s);
+            }
+            0x4E => {
+                // 8-byte Double (LE)
+                let s = decode_tag_or_hex(bytes, &mut i, tag, handle_tag_0x4e);
+                emit(&mut out, &mut stack, &s);
+            }
+            0x22 => {
+                // 1-byte String (Latin-1)
+                let s = decode_tag_or_hex(bytes, &mut i, tag, handle_tag_0x22);
+                emit(&mut out, &mut stack, &s);
+            }
+            0x63 => {
+                // 2-byte String (UTF-16LE)
+                let s = decode_tag_or_hex(bytes, &mut i, tag, handle_tag_0x63);
+                emit(&mut out, &mut stack, &s);
+            }
+
+            // Property Objects
+            0x6F => {
+                // Object start tag
+                emit(&mut out, &mut stack, "{");
+                stack.push(Ctx::Object {
+                    expect_key: true,
+                    first: true,
+                });
+            }
+            0x7B => {
+                // Object end tag
+                let _ = read_varint_len(bytes, &mut i); // property count
+                out.push('}');
+                let _ = stack.pop();
+            }
+            0x61 | 0x41 => {
+                // SparseArray | DenseArray start tag
+                let _ = read_varint_len(bytes, &mut i); // len
+                emit(&mut out, &mut stack, "[");
+                stack.push(Ctx::Array { first: true });
+            }
+            0x40 | 0x24 => {
+                // SparseArray | DenseArray end tag
+                let _ = read_varint_len(bytes, &mut i); // property count
+                let _ = read_varint_len(bytes, &mut i); // len
+                out.push(']');
+                let _ = stack.pop();
+            }
+
+            _ => emit(&mut out, &mut stack, &format!("\\x{:02X}", tag)),
+        };
+    }
+
+    out
+}
+
+// indexeddb decode helpers ----------------------------------------------------
+
+// read Varint starting at *i, advance cursor, return length
+fn read_varint_len(bytes: &[u8], i: &mut usize) -> Option<usize> {
+    let (val, consumed) = parse_varint(&bytes[*i..]);
+    if consumed == 0 {
+        return None;
+    }
+    *i += consumed;
+    Some(val as usize)
+}
+
+// try handler; on failure, revert i and return hex val
+fn decode_tag_or_hex(
+    bytes: &[u8],
+    i: &mut usize,
+    tag: u8,
+    handler: fn(&[u8], &mut usize) -> Option<String>,
+) -> String {
+    let before = *i;
+    if let Some(s) = handler(bytes, i) {
+        s
+    } else {
+        *i = before;
+        format!("\\x{:02X}", tag)
+    }
+}
+
+// 1-byte String (Latin-1)
+fn handle_tag_0x22(bytes: &[u8], i: &mut usize) -> Option<String> {
+    let len = read_varint_len(bytes, i)?;
+    if *i + len > bytes.len() {
+        return None;
+    }
+    let payload = &bytes[*i..*i + len];
+    *i += len;
+    Some(format!("\"{}\"", bytes_to_latin1_hex_escaped(payload)))
+}
+
+// 2-byte String (UTF-16LE)
+fn handle_tag_0x63(bytes: &[u8], i: &mut usize) -> Option<String> {
+    let len = read_varint_len(bytes, i)?;
+    if *i + len > bytes.len() {
+        return None;
+    }
+    let payload = &bytes[*i..*i + len];
+    *i += len;
+    if len % 2 == 0 {
+        if let Some(s) = try_utf16le(payload) {
+            return Some(format!("\"{}\"", s));
+        }
+    }
+    None
+}
+
+// ZigZag Int32 (like protobuf sint32)
+fn handle_tag_0x49(bytes: &[u8], i: &mut usize) -> Option<String> {
+    let (val, consumed) = parse_varint(&bytes[*i..]);
+    if consumed == 0 {
+        return None;
+    }
+    *i += consumed;
+    let raw = val as u32;
+    // ZigZag decode
+    let signed = ((raw >> 1) as i32) ^ (-((raw & 1) as i32));
+    Some(format!("{}", signed))
+}
+
+// 8-byte Double (LE)
+fn handle_tag_0x4e(bytes: &[u8], i: &mut usize) -> Option<String> {
+    if *i + 8 > bytes.len() {
+        return None;
+    }
+    let mut arr = [0u8; 8];
+    arr.copy_from_slice(&bytes[*i..*i + 8]);
+    *i += 8;
+    let v = f64::from_le_bytes(arr);
+    Some(format!("{}", v))
+}
+
+// -----------------------------------------------------------------------------
+
+pub fn bytes_to_hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("\\x{:02X}", b)).collect()
 }
 
@@ -185,17 +439,51 @@ pub fn bytes_to_utf8_lossy(bytes: &[u8]) -> String {
         .collect()
 }
 
-fn try_utf16le(bytes: &[u8]) -> Option<String> {
+fn try_utf16(bytes: &[u8], little_endian: bool) -> Option<String> {
     if bytes.len() >= 2 && bytes.len() % 2 == 0 {
         let mut buf = Vec::with_capacity(bytes.len() / 2);
         for c in bytes.chunks(2) {
-            buf.push(u16::from_le_bytes([c[0], c[1]]));
+            let unit = if little_endian {
+                u16::from_le_bytes([c[0], c[1]])
+            } else {
+                u16::from_be_bytes([c[0], c[1]])
+            };
+            buf.push(unit);
         }
         if let Ok(s) = String::from_utf16(&buf) {
-            if s.chars().any(|c| !c.is_control()) {
-                return Some(s);
+            if s.chars().any(|ch| !ch.is_control()) {
+                return Some(s.chars().filter(|ch| !ch.is_control()).collect());
             }
         }
     }
     None
+}
+
+fn try_utf16le(bytes: &[u8]) -> Option<String> {
+    try_utf16(bytes, true)
+}
+
+fn try_utf16be(bytes: &[u8]) -> Option<String> {
+    try_utf16(bytes, false)
+}
+
+fn parse_varint(bytes: &[u8]) -> (u64, usize) {
+    let mut value: u64 = 0;
+    let mut shift = 0u32;
+    let mut consumed = 0;
+    for &b in bytes {
+        value |= ((b & 0x7F) as u64) << shift;
+        consumed += 1;
+        if b & 0x80 == 0 {
+            break;
+        }
+        shift += 7;
+    }
+    (value, consumed)
+}
+
+fn decode_varint_utf16be(bytes: &[u8]) -> String {
+    let (val, consumed) = parse_varint(bytes);
+    let slice = &bytes[consumed..consumed + val as usize * 2]; // varint gives number of UTF-16 code units
+    try_utf16be(slice).unwrap_or_else(|| bytes_to_utf8_lossy(slice))
 }
