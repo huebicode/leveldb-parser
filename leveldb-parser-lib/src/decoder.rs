@@ -1,3 +1,5 @@
+use chrono::{TimeZone, Utc};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StorageKind {
     SessionStorage,
@@ -38,16 +40,22 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
         }
         StorageKind::LocalStorage => {
             let is_entry = key.starts_with(b"_");
+            let is_meta = key.starts_with(b"META:") || key.starts_with(b"METAACCESS:");
 
             let k = if is_entry {
-                decode_local_storage_entry(key)
+                decode_local_storage_key(key)
             } else {
                 bytes_to_latin1_hex_escaped(key)
             };
+
             let v = match value {
                 Some(v_bytes) => {
                     if is_entry {
-                        decode_local_storage_entry(v_bytes)
+                        decode_local_storage_value(v_bytes)
+                    } else if is_meta {
+                        decode_local_storage_meta(v_bytes)
+                    } else if key.eq_ignore_ascii_case(b"VERSION") {
+                        bytes_to_latin1_hex_escaped(v_bytes)
                     } else {
                         bytes_to_hex(v_bytes)
                     }
@@ -92,46 +100,46 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
     }
 }
 
-fn decode_local_storage_entry(bytes: &[u8]) -> String {
-    if bytes.starts_with(b"_") {
-        // key
-        let delim_pos = match bytes.iter().position(|&b| b == 0x00) {
-            Some(p) => p,
-            None => return bytes_to_latin1_hex_escaped(bytes), // fallback without delimiter
-        };
-        if delim_pos + 1 >= bytes.len() {
-            // key prefix only
-            return bytes_to_latin1_hex_escaped(bytes);
+fn decode_local_storage_key(bytes: &[u8]) -> String {
+    let delim_pos = match bytes.iter().position(|&b| b == 0x00) {
+        Some(p) => p,
+        None => return bytes_to_latin1_hex_escaped(bytes), // fallback without delimiter
+    };
+    if delim_pos + 1 >= bytes.len() {
+        // key prefix only
+        return bytes_to_latin1_hex_escaped(bytes);
+    }
+
+    // decode key
+    let key_prefix = &bytes[..delim_pos];
+    let encoding_flag = bytes[delim_pos + 1];
+    let key_entry = &bytes[delim_pos + 2..];
+
+    let key = match encoding_flag {
+        0x00 => {
+            // UTF-16LE
+            if let Some(entry) = try_utf16le(key_entry) {
+                format!("{} {}", bytes_to_latin1_hex_escaped(key_prefix), entry)
+            } else {
+                bytes_to_latin1_hex_escaped(bytes) // fallback
+            }
         }
+        0x01 => {
+            // Latin-1
+            format!(
+                "{} {}",
+                bytes_to_latin1_hex_escaped(key_prefix),
+                bytes_to_latin1_hex_escaped(key_entry)
+            )
+        }
+        _ => bytes_to_latin1_hex_escaped(bytes), // unknown flag => fallback
+    };
 
-        // decode key
-        let key_prefix = &bytes[..delim_pos];
-        let encoding_flag = bytes[delim_pos + 1];
-        let key_entry = &bytes[delim_pos + 2..];
+    return key;
+}
 
-        let key = match encoding_flag {
-            0x00 => {
-                // UTF-16LE
-                if let Some(entry) = try_utf16le(key_entry) {
-                    format!("{} {}", bytes_to_latin1_hex_escaped(key_prefix), entry)
-                } else {
-                    bytes_to_latin1_hex_escaped(bytes) // fallback
-                }
-            }
-            0x01 => {
-                // Latin-1
-                format!(
-                    "{} {}",
-                    bytes_to_latin1_hex_escaped(key_prefix),
-                    bytes_to_latin1_hex_escaped(key_entry)
-                )
-            }
-            _ => bytes_to_latin1_hex_escaped(bytes), // unknown flag => fallback
-        };
-
-        return key;
-    } else if bytes.starts_with(&[0x00]) || bytes.starts_with(&[0x01]) {
-        // value
+fn decode_local_storage_value(bytes: &[u8]) -> String {
+    if bytes.starts_with(&[0x00]) || bytes.starts_with(&[0x01]) {
         let encoding_flag = bytes[0];
         let value_entry = &bytes[1..];
 
@@ -148,13 +156,81 @@ fn decode_local_storage_entry(bytes: &[u8]) -> String {
                 // Latin-1
                 bytes_to_latin1_hex_escaped(value_entry)
             }
-            _ => bytes_to_latin1_hex_escaped(value_entry), // unknown flag => fallback
+            _ => {
+                // unknown flag => fallback
+                bytes_to_hex(value_entry)
+            }
         };
 
         return value;
     }
 
-    bytes_to_latin1_hex_escaped(bytes) // fallback
+    bytes_to_hex(bytes) // fallback
+}
+
+fn decode_local_storage_meta(v_bytes: &[u8]) -> String {
+    // Chrome timestamp epoch: 1601-01-01T00:00:00Z
+    const CHROME_EPOCH: i64 = 11644473600000000; // microseconds between 1601-01-01 and 1970-01-01
+
+    // parse protobuf: field 1 = creation_time (varint, microseconds since 1601)
+    // optionally, field 2 = size (varint)
+    let mut i = 0;
+    let mut creation_time: Option<u64> = None;
+    let mut size: Option<u64> = None;
+
+    while i < v_bytes.len() {
+        let key = v_bytes[i];
+        i += 1;
+        let field_number = key >> 3;
+        let wire_type = key & 0x07;
+
+        match (field_number, wire_type) {
+            (1, 0) => {
+                // varint: creation_time
+                let (val, consumed) = parse_varint(&v_bytes[i..]);
+                creation_time = Some(val);
+                i += consumed;
+            }
+            (2, 0) => {
+                // varint: size
+                let (val, consumed) = parse_varint(&v_bytes[i..]);
+                size = Some(val);
+                i += consumed;
+            }
+            _ => {
+                // unknown field
+                break;
+            }
+        }
+    }
+
+    let mut out = String::new();
+    if let Some(ts) = creation_time {
+        // convert Chrome timestamp to Unix timestamp
+        let unix_us = ts as i64 - CHROME_EPOCH;
+        let unix_s = unix_us / 1_000_000;
+        let unix_ns = (unix_us % 1_000_000) * 1000;
+
+        let dt = Utc.timestamp_opt(unix_s, unix_ns as u32).single();
+        if let Some(dt) = dt {
+            out.push_str(&format!(
+                "timestamp: {}",
+                dt.to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+            ));
+        } else {
+            out.push_str(&format!("timestamp: {}", unix_s)); // fallback to Unix seconds
+        }
+    }
+    if let Some(sz) = size {
+        if !out.is_empty() {
+            out.push_str(", ");
+        }
+        out.push_str(&format!("size: {}", sz));
+    }
+    if out.is_empty() {
+        out.push_str(&bytes_to_hex(v_bytes));
+    }
+    out
 }
 
 fn decode_indexeddb_entry(bytes: &[u8]) -> String {
