@@ -214,18 +214,15 @@ fn decode_local_storage_meta(v_bytes: &[u8]) -> String {
         let dt = Utc.timestamp_opt(unix_s, unix_ns as u32).single();
         if let Some(dt) = dt {
             out.push_str(&format!(
-                "timestamp: {}",
+                "{}",
                 dt.to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
             ));
         } else {
-            out.push_str(&format!("timestamp: {}", unix_s)); // fallback to Unix seconds
+            out.push_str(&format!("{}", unix_s)); // fallback to Unix seconds
         }
     }
     if let Some(sz) = size {
-        if !out.is_empty() {
-            out.push_str(", ");
-        }
-        out.push_str(&format!("size: {}", sz));
+        out.push_str(&format!(" ({})", sz));
     }
     if out.is_empty() {
         out.push_str(&bytes_to_hex(v_bytes));
