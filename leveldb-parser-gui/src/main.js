@@ -280,7 +280,6 @@ listen('processing_finished', () => {
 let isFirstLoad = true
 listen('records_csv', e => {
     const csv = e.payload
-    // console.log(csv)
     const [headerLine, ...lines] = csv.trim().split('\n')
     const headers = parseCsvLine(headerLine)
 
