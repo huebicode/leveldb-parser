@@ -69,9 +69,20 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
                 [_, _, _, 0x01, entry_type @ 0x00..=0x06, payload @ ..] => {
                     // record entry
                     let k = if *entry_type == 0x01 {
+                        // String
                         decode_varint_utf16be(payload)
+                    } else if *entry_type == 0x03 {
+                        // Double-precision float
+                        if payload.len() == 8 {
+                            let mut arr = [0u8; 8];
+                            arr.copy_from_slice(&payload[..8]);
+                            let num = f64::from_le_bytes(arr);
+                            num.to_string()
+                        } else {
+                            bytes_to_hex(payload)
+                        }
                     } else {
-                        bytes_to_utf8_lossy(payload)
+                        bytes_to_hex(payload)
                     };
                     let v = match value {
                         Some(v_bytes) => decode_indexeddb_entry(v_bytes),
@@ -80,9 +91,9 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
                     (k, v)
                 }
                 _ => {
-                    let k = bytes_to_utf8_lossy(key);
+                    let k = bytes_to_hex(key);
                     let v = match value {
-                        Some(v_bytes) => bytes_to_utf8_lossy(v_bytes),
+                        Some(v_bytes) => bytes_to_hex(v_bytes),
                         None => String::new(),
                     };
                     (k, v)
