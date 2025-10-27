@@ -22,17 +22,17 @@ Implemented features:
 - [x] parse `.log` files
 - [x] parse `MANIFEST` files
 - [x] parse `.ldb` files
-- [x] decode `Web Storage` (applied if path contains `Session Storage` or `Local Storage`)
-- [x] decode `IndexedDB` (implemented for common entry types, applied if path contains `IndexedDB`)
+- [x] decode `Web Storage` entries (applied if path contains `Session Storage` or `Local Storage`)
+- [x] decode `IndexedDB` entries (implemented for common types, applied if path contains `IndexedDB`)
 
 ## GUI
-`leveldb-parser-gui` can accept both individual files and folders, which are processed recursively.
+The GUI parser can accept both individual files and folders, which are processed recursively.
 
 <img alt="leveldbgui-interface" src="https://github.com/user-attachments/assets/fa7f870a-567a-42f4-b83d-1af49186eacd" />
 
 
 ## CLI
-`leveldb-parser-cli` can parse single `.log`, `.ldb` or `MANIFEST` files. 
+The CLI parser can parse single `.log`, `.ldb` or `MANIFEST` files. 
 
 ### Usage
 `leveldb-parser-cli [-a] <file>`
