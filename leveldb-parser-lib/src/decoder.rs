@@ -66,24 +66,9 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
         }
         StorageKind::IndexedDb => {
             match key {
-                [_, _, _, 0x01, entry_type @ 0x00..=0x06, payload @ ..] => {
+                [_, _, _, 0x01, entry_type @ 0x00..=0x06, key_payload @ ..] => {
                     // record entry
-                    let k = if *entry_type == 0x01 {
-                        // String
-                        decode_varint_utf16be(payload)
-                    } else if *entry_type == 0x03 {
-                        // Double-precision float
-                        if payload.len() == 8 {
-                            let mut arr = [0u8; 8];
-                            arr.copy_from_slice(&payload[..8]);
-                            let num = f64::from_le_bytes(arr);
-                            num.to_string()
-                        } else {
-                            bytes_to_hex(payload)
-                        }
-                    } else {
-                        bytes_to_hex(payload)
-                    };
+                    let k = decode_indexeddb_key(*entry_type, key_payload);
                     let v = match value {
                         Some(v_bytes) => decode_indexeddb_entry(v_bytes),
                         None => String::new(),
@@ -126,7 +111,7 @@ fn decode_local_storage_key(bytes: &[u8]) -> String {
     let encoding_flag = bytes[delim_pos + 1];
     let key_entry = &bytes[delim_pos + 2..];
 
-    let key = match encoding_flag {
+    match encoding_flag {
         0x00 => {
             // UTF-16LE
             if let Some(entry) = try_utf16le(key_entry) {
@@ -144,9 +129,7 @@ fn decode_local_storage_key(bytes: &[u8]) -> String {
             )
         }
         _ => bytes_to_latin1_hex_escaped(bytes), // unknown flag => fallback
-    };
-
-    return key;
+    }
 }
 
 fn decode_local_storage_value(bytes: &[u8]) -> String {
@@ -224,12 +207,9 @@ fn decode_local_storage_meta(v_bytes: &[u8]) -> String {
 
         let dt = Utc.timestamp_opt(unix_s, unix_ns as u32).single();
         if let Some(dt) = dt {
-            out.push_str(&format!(
-                "{}",
-                dt.to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
-            ));
+            out.push_str(&dt.to_rfc3339_opts(chrono::SecondsFormat::Millis, true));
         } else {
-            out.push_str(&format!("{}", unix_s)); // fallback to Unix seconds
+            out.push_str(&unix_s.to_string()); // fallback to Unix seconds
         }
     }
     if let Some(sz) = size {
@@ -239,6 +219,25 @@ fn decode_local_storage_meta(v_bytes: &[u8]) -> String {
         out.push_str(&bytes_to_hex(v_bytes));
     }
     out
+}
+
+fn decode_indexeddb_key(entry_type: u8, payload: &[u8]) -> String {
+    match entry_type {
+        // String
+        0x01 => decode_varint_utf16be(payload),
+        // Double-precision float
+        0x03 => {
+            if payload.len() == 8 {
+                let mut arr = [0u8; 8];
+                arr.copy_from_slice(&payload[..8]);
+                let num = f64::from_le_bytes(arr);
+                num.to_string()
+            } else {
+                bytes_to_hex(payload)
+            }
+        }
+        _ => bytes_to_hex(payload),
+    }
 }
 
 fn decode_indexeddb_entry(bytes: &[u8]) -> String {
