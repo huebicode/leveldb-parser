@@ -427,7 +427,7 @@ pub mod export {
             let containing_block = log.blocks.iter().find(|block| block.offset == batch.offset);
 
             let crc_status = if let Some(block) = containing_block {
-                if block.crc_valid { "valid" } else { "failed!" }
+                if block.crc_valid { "valid" } else { "failed" }
             } else {
                 "unknown" // shouldn't happen
             };

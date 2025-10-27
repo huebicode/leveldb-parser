@@ -634,7 +634,7 @@ pub mod export {
             let crc_valid = if data_block.raw_block.crc_valid {
                 "valid"
             } else {
-                "failed!"
+                "failed"
             };
 
             for record in &data_block.records {

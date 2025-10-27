@@ -383,7 +383,7 @@ pub mod export {
         for entry_set in &manifest.entries {
             let block_offset = entry_set.offset;
             let crc_valid = block_crc_map.get(&block_offset).copied().unwrap_or(false);
-            let crc_status = if crc_valid { "valid" } else { "failed!" };
+            let crc_status = if crc_valid { "valid" } else { "failed" };
 
             for entry in &entry_set.entries {
                 let (tag, value) = match entry {
