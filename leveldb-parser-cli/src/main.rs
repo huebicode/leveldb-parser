@@ -42,6 +42,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let path = Path::new(file_path);
 
+    let abs_path = match path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => {
+            println!("Error: File does not exist: {}", path.display());
+            return Ok(());
+        }
+    };
+
     let file_name = if !path.exists() {
         println!("Error: File does not exist: {}", path.display());
         return Ok(());
@@ -53,21 +61,21 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     if file_name.ends_with(".ldb") {
-        let ldb_file = ldb_parser::parse_file(file_path)?;
+        let ldb_file = ldb_parser::parse_file(abs_path.to_str().unwrap())?;
         if use_print_all {
             ldb_parser::display::print_all(&ldb_file)?;
         } else {
             ldb_parser::display::print_csv(&ldb_file)?;
         }
     } else if file_name.ends_with(".log") {
-        let log_file = log_parser::parse_file(file_path)?;
+        let log_file = log_parser::parse_file(abs_path.to_str().unwrap())?;
         if use_print_all {
             log_parser::display::print_all(&log_file)?;
         } else {
             log_parser::display::print_csv(&log_file)?;
         }
     } else if file_name.starts_with("MANIFEST-") {
-        let manifest_file = manifest_parser::parse_file(file_path)?;
+        let manifest_file = manifest_parser::parse_file(abs_path.to_str().unwrap())?;
         if use_print_all {
             manifest_parser::display::print_all(&manifest_file)?;
         } else {
