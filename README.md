@@ -28,8 +28,7 @@ Implemented features:
 ## GUI
 The GUI parser can accept both individual files and folders, which are processed recursively.
 
-<img alt="leveldbgui-interface" src="https://github.com/user-attachments/assets/8fc51359-02c7-4652-af54-bc5067bc4c41" />
-
+<img alt="leveldb-gui-interface" src="https://github.com/user-attachments/assets/a3df841b-6623-4e5d-838f-0b83faed630e" />
 
 
 ## CLI
