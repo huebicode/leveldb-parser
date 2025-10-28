@@ -1,6 +1,6 @@
 [package]
 name = "leveldb-parser-gui"
-version = "0.3.1"
+version = "0.4.1"
 description = "A Tauri App"
 authors = ["Alexander Hübert"]
 edition = "2024"
