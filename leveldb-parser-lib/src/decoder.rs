@@ -227,7 +227,6 @@ fn decode_local_storage_meta(v_bytes: &[u8]) -> String {
 
 fn decode_indexeddb_key(entry_type: u8, payload: &[u8]) -> String {
     match decode_indexeddb_key_inner(entry_type, payload) {
-        Some((decoded, consumed)) if consumed == payload.len() => decoded,
         Some((decoded, _)) => decoded,
         None => bytes_to_hex(payload),
     }
