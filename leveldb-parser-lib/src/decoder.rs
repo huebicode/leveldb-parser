@@ -66,8 +66,8 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
         }
         StorageKind::IndexedDb => {
             match key {
+                // record entry
                 [_, _, _, 0x01, entry_type @ 0x00..=0x06, key_payload @ ..] => {
-                    // record entry
                     let k = decode_indexeddb_key(*entry_type, key_payload);
                     let v = match value {
                         Some(v_bytes) => decode_indexeddb_entry(v_bytes),
@@ -95,6 +95,8 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
         }
     }
 }
+
+// Local Storage ---------------------------------------------------------------
 
 fn decode_local_storage_key(bytes: &[u8]) -> String {
     let delim_pos = match bytes.iter().position(|&b| b == 0x00) {
@@ -221,23 +223,70 @@ fn decode_local_storage_meta(v_bytes: &[u8]) -> String {
     out
 }
 
+// IndexedDB -------------------------------------------------------------------
+
 fn decode_indexeddb_key(entry_type: u8, payload: &[u8]) -> String {
-    match entry_type {
-        // String
-        0x01 => decode_varint_utf16be(payload),
-        // Double-precision float
-        0x03 => {
-            if payload.len() == 8 {
-                let mut arr = [0u8; 8];
-                arr.copy_from_slice(&payload[..8]);
-                let num = f64::from_le_bytes(arr);
-                num.to_string()
-            } else {
-                bytes_to_hex(payload)
-            }
-        }
-        _ => bytes_to_hex(payload),
+    match decode_indexeddb_key_inner(entry_type, payload) {
+        Some((decoded, consumed)) if consumed == payload.len() => decoded,
+        Some((decoded, _)) => decoded,
+        None => bytes_to_hex(payload),
     }
+}
+
+fn decode_indexeddb_key_inner(entry_type: u8, payload: &[u8]) -> Option<(String, usize)> {
+    match entry_type {
+        0x01 => decode_indexeddb_key_string(payload),
+        0x02 => decode_indexeddb_key_date(payload),
+        0x03 => decode_indexeddb_key_number(payload),
+        0x04 => decode_indexeddb_key_array(payload),
+        _ => None,
+    }
+}
+
+fn decode_indexeddb_key_string(payload: &[u8]) -> Option<(String, usize)> {
+    let (code_units, consumed) = parse_varint(payload);
+    if consumed == 0 {
+        return None;
+    }
+    let byte_len = code_units as usize * 2;
+    if consumed + byte_len > payload.len() {
+        return None;
+    }
+    let s = decode_varint_utf16be(payload);
+    Some((format!("\"{}\"", s), consumed + byte_len))
+}
+
+fn decode_indexeddb_key_date(payload: &[u8]) -> Option<(String, usize)> {
+    let s = decode_date(payload)?;
+    Some((s, 8))
+}
+
+fn decode_indexeddb_key_number(payload: &[u8]) -> Option<(String, usize)> {
+    if payload.len() < 8 {
+        return None;
+    }
+    let mut arr = [0u8; 8];
+    arr.copy_from_slice(&payload[..8]);
+    Some((f64::from_le_bytes(arr).to_string(), 8))
+}
+
+fn decode_indexeddb_key_array(payload: &[u8]) -> Option<(String, usize)> {
+    let (count, mut offset) = parse_varint(payload);
+    if offset == 0 {
+        return None;
+    }
+    let mut items = Vec::with_capacity(count as usize);
+    for _ in 0..count {
+        if offset >= payload.len() {
+            return None;
+        }
+        let entry_type = payload[offset];
+        offset += 1;
+        let (item, consumed) = decode_indexeddb_key_inner(entry_type, &payload[offset..])?;
+        offset += consumed;
+        items.push(item);
+    }
+    Some((format!("[{}]", items.join(", ")), offset))
 }
 
 fn decode_indexeddb_entry(bytes: &[u8]) -> String {
@@ -341,6 +390,11 @@ fn decode_indexeddb_entry(bytes: &[u8]) -> String {
             0x4E => {
                 // 8-byte Double (LE)
                 let s = decode_tag_or_hex(bytes, &mut i, tag, handle_tag_0x4e);
+                emit(&mut out, &mut stack, &s);
+            }
+            0x44 => {
+                // Date (double millis)
+                let s = decode_tag_or_hex(bytes, &mut i, tag, handle_tag_0x44);
                 emit(&mut out, &mut stack, &s);
             }
             0x22 => {
@@ -468,6 +522,35 @@ fn handle_tag_0x4e(bytes: &[u8], i: &mut usize) -> Option<String> {
     *i += 8;
     let v = f64::from_le_bytes(arr);
     Some(format!("{}", v))
+}
+
+// Date
+fn handle_tag_0x44(bytes: &[u8], i: &mut usize) -> Option<String> {
+    if *i + 8 > bytes.len() {
+        return None;
+    }
+    let out = decode_date(&bytes[*i..*i + 8]);
+    *i += 8;
+    out
+}
+
+fn decode_date(payload: &[u8]) -> Option<String> {
+    if payload.len() != 8 {
+        return None;
+    }
+    let mut arr = [0u8; 8];
+    arr.copy_from_slice(&payload[..8]);
+    let millis = f64::from_le_bytes(arr);
+    if !millis.is_finite() || millis < i64::MIN as f64 || millis > i64::MAX as f64 {
+        return Some(millis.to_string());
+    }
+    let millis_i = millis.round() as i64;
+    match Utc.timestamp_millis_opt(millis_i) {
+        chrono::LocalResult::Single(dt) => {
+            Some(dt.to_rfc3339_opts(chrono::SecondsFormat::Millis, true))
+        }
+        _ => Some(millis.to_string()),
+    }
 }
 
 // -----------------------------------------------------------------------------
