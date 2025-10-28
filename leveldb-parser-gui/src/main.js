@@ -351,7 +351,7 @@ listen('log_text_csv', e => {
 
 // value popup
 document.addEventListener('mousedown', (e) => {
-    if (valuePopup.style.display !== 'none' && e.target.id !== 'popup-content') {
+    if (valuePopup.style.display !== 'none' && !popupContent.contains(e.target)) {
         valuePopup.style.display = 'none'
     }
 })
