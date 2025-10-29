@@ -1,5 +1,5 @@
 # LevelDB Parser
-[LevelDB](https://github.com/google/leveldb) is a key/value database from Google, used among other things in Chromium-based browsers and applications, such as Electron. 
+[LevelDB](https://github.com/google/leveldb) is a key-value database developed by Google, used among other things in Chromium-based browsers and WebViews, as well as in frameworks such as Electron. 
 
 This project is part of my master’s thesis in Digital Forensics at the University of Applied Sciences Albstadt-Sigmaringen, Germany, which involves developing a parser for LevelDB. The final thesis will be uploaded here after completion.
 
