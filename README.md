@@ -12,12 +12,7 @@ The goal is to explore and understand the internal structure of LevelDB and impl
 - Educational insight into LevelDB internals
 
 
-## Status
-
-**Work in progress!** – This repository will be continuously updated and changed as the thesis progresses.
-
-
-Implemented features:
+## Features
 
 - [x] parse `.log` files
 - [x] parse `MANIFEST` files
