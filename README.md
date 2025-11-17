@@ -19,6 +19,7 @@ The goal is to explore and understand the internal structure of LevelDB and impl
 - [x] parse `.ldb` files
 - [x] decode `Web Storage` entries (applied if path contains `Session Storage` or `Local Storage`)
 - [x] decode `IndexedDB` entries (implemented for common types, applied if path contains `IndexedDB`)
+- [x] view filter for `IndexedDB`, `IndexedDB Entries`, `Session Storage`, `Local Storage` and `Generic (UTF-8)`
 
 ## GUI
 The GUI parser can accept both individual files and folders, which are processed recursively.
