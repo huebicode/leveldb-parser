@@ -598,7 +598,7 @@ pub mod display {
                     _ => "Unknown",
                 };
 
-                let (key_str, value_str) = decoder::decode_kv(
+                let (key_str, value_str, _) = decoder::decode_kv(
                     ldb.storage_kind,
                     &record.key,
                     (record.state != 0).then_some(record.value.as_slice()),
@@ -627,7 +627,7 @@ pub mod export {
     pub fn csv_string(ldb: &LdbFile, filename: &str, file_path: &str) -> String {
         let mut csv = String::new();
         // Header
-        csv.push_str("\"Seq\",\"K\",\"V\",\"Cr\",\"St\",\"BO\",\"C\",\"F\",\"FP\"\n");
+        csv.push_str("\"Seq\",\"K\",\"V\",\"Cr\",\"St\",\"BO\",\"C\",\"F\",\"FP\",\"Kind\"\n");
 
         for data_block in &ldb.data_blocks {
             let compressed = data_block.raw_block.compression_type != 0;
@@ -644,7 +644,7 @@ pub mod export {
                     _ => "unknown",
                 };
 
-                let (key_str, value_str) = decoder::decode_kv(
+                let (key_str, value_str, kind_str) = decoder::decode_kv(
                     ldb.storage_kind,
                     &record.key,
                     (record.state != 0).then_some(record.value.as_slice()),
@@ -653,7 +653,7 @@ pub mod export {
                 let value_str = value_str.replace("\"", "\"\"");
 
                 csv.push_str(&format!(
-                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
+                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
                     record.seq,
                     key_str,
                     value_str,
@@ -663,6 +663,7 @@ pub mod export {
                     compressed,
                     filename,
                     file_path,
+                    kind_str,
                 ));
             }
         }

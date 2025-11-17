@@ -145,7 +145,6 @@ html {
     position: absolute;
     left: 100%;
     align-self: center;
-    margin-left: 6px;
     margin-bottom: 2px;
     border: 3px solid gainsboro;
     border-top: 3px solid orangered;
@@ -163,6 +162,17 @@ html {
     100% {
         transform: rotate(360deg);
     }
+}
+
+#view-filter-container {
+    margin-inline: 12px;
+    display: flex;
+}
+
+#view-filter-select {
+    align-self: top;
+    height: 24px;
+    font-size: 10px;
 }
 
 #search-container {

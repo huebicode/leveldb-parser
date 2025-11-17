@@ -394,7 +394,7 @@ pub mod display {
                     _ => "Unknown",
                 };
 
-                let (key_str, value_str) =
+                let (key_str, value_str, _) =
                     decoder::decode_kv(log.storage_kind, &record.key, record.value.as_deref());
                 let key_str = key_str.replace("\"", "\"\"");
                 let value_str = value_str.replace("\"", "\"\"");
@@ -420,7 +420,7 @@ pub mod export {
     pub fn csv_string(log: &LogFile, filename: &str, file_path: &str) -> String {
         let mut csv = String::new();
         // Header
-        csv.push_str("\"Seq\",\"K\",\"V\",\"Cr\",\"St\",\"BO\",\"C\",\"F\",\"FP\"\n");
+        csv.push_str("\"Seq\",\"K\",\"V\",\"Cr\",\"St\",\"BO\",\"C\",\"F\",\"FP\",\"Kind\"\n");
 
         for batch in &log.batches {
             // find the block that contains this batch
@@ -439,13 +439,13 @@ pub mod export {
                     _ => "unknown",
                 };
 
-                let (key_str, value_str) =
+                let (key_str, value_str, kind_str) =
                     decoder::decode_kv(log.storage_kind, &record.key, record.value.as_deref());
                 let key_str = key_str.replace("\"", "\"\"");
                 let value_str = value_str.replace("\"", "\"\"");
 
                 csv.push_str(&format!(
-                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
+                    "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
                     record.seq,
                     key_str,
                     value_str,
@@ -455,6 +455,7 @@ pub mod export {
                     "false", // .log files don't use compression
                     filename,
                     file_path,
+                    kind_str,
                 ));
             }
         }

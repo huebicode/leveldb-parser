@@ -18,7 +18,7 @@ pub fn detect_storage_kind(path: &str) -> StorageKind {
     }
 }
 
-pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String, String) {
+pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String, String, String) {
     match kind {
         StorageKind::SessionStorage => {
             let k = bytes_to_utf8_lossy(key);
@@ -36,7 +36,7 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
                 }
                 None => String::new(),
             };
-            (k, v)
+            (k, v, "S".to_string())
         }
         StorageKind::LocalStorage => {
             let is_entry = key.starts_with(b"_");
@@ -62,7 +62,7 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
                 }
                 None => String::new(),
             };
-            (k, v)
+            (k, v, "L".to_string())
         }
         StorageKind::IndexedDb => {
             match key {
@@ -73,7 +73,7 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
                         Some(v_bytes) => decode_indexeddb_entry(v_bytes),
                         None => String::new(),
                     };
-                    (k, v)
+                    (k, v, "IE".to_string())
                 }
                 _ => {
                     let k = bytes_to_hex(key);
@@ -81,7 +81,7 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
                         Some(v_bytes) => bytes_to_hex(v_bytes),
                         None => String::new(),
                     };
-                    (k, v)
+                    (k, v, "I".to_string())
                 }
             }
         }
@@ -91,7 +91,7 @@ pub fn decode_kv(kind: StorageKind, key: &[u8], value: Option<&[u8]>) -> (String
                 Some(v_bytes) => bytes_to_utf8_lossy(v_bytes),
                 None => String::new(),
             };
-            (k, v)
+            (k, v, "G".to_string())
         }
     }
 }
@@ -636,15 +636,27 @@ fn parse_varint(bytes: &[u8]) -> (u64, usize) {
     let mut value: u64 = 0;
     let mut shift = 0u32;
     let mut consumed = 0;
+
     for &b in bytes {
-        value |= ((b & 0x7F) as u64) << shift;
+        let chunk = match ((b & 0x7F) as u64).checked_shl(shift) {
+            Some(val) => val,
+            None => return (0, 0),
+        };
+
+        value |= chunk;
         consumed += 1;
+
         if b & 0x80 == 0 {
-            break;
+            return (value, consumed);
         }
+
         shift += 7;
+        if shift >= 64 {
+            return (0, 0);
+        }
     }
-    (value, consumed)
+
+    (0, 0)
 }
 
 fn decode_varint_utf16be(bytes: &[u8]) -> String {

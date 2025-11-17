@@ -13,6 +13,30 @@ const logButton = document.getElementById('log-button')
 
 const loadingIndicator = document.getElementById('loading-indicator')
 
+const viewFilterDropdown = document.getElementById('view-filter-select')
+viewFilterDropdown.addEventListener('change', () => {
+    applyViewFilter(viewFilterDropdown.value)
+})
+
+function applyViewFilter(kindValue) {
+    const model = { ...(recordsGrid.getFilterModel() || {}) }
+
+    if (kindValue === 'I') {
+        model.Kind = {
+            filterType: 'text',
+            operator: 'OR',
+            conditions: [
+                { type: 'equals', filter: 'I' },
+                { type: 'equals', filter: 'IE' },
+            ],
+        }
+    } else {
+        model.Kind = { filterType: 'text', type: 'equals', filter: kindValue }
+    }
+
+    recordsGrid.setFilterModel(model)
+}
+
 // helper ----------------------------------------------------------------------
 function parseCsvLine(line) {
     const result = []
@@ -153,6 +177,7 @@ const gridOptionsRecords = {
         { field: "C", headerName: "Compressed", flex: 0.4, minWidth: 90, cellStyle: { pointerEvents: 'none' } },
         { field: "F", headerName: "File", flex: 0.4, minWidth: 80 },
         { field: "FP", headerName: "File Path", flex: 0.4, minWidth: 80 },
+        { field: "Kind", hide: true },
     ],
     defaultColDef: {
         filter: true,
@@ -297,6 +322,49 @@ listen('records_csv', e => {
     })
 
     recordsGrid.applyTransaction({ add: rowData })
+
+    // create view filter dropdown dynamically
+    const kindSet = new Set()
+    // data.Kind column can contain: S, L, I, IE, G
+    recordsGrid.forEachNode(node => {
+        if (node.data && node.data.Kind) {
+            kindSet.add(node.data.Kind)
+        }
+    })
+
+    const kindLabels = {
+        S: 'Session Storage',
+        L: 'Local Storage',
+        I: 'IndexedDB',
+        IE: 'IndexedDB (Entries)',
+        G: 'Generic (UTF-8)'
+    }
+
+    kindSet.forEach(kind => {
+        if (kindLabels[kind] && !viewFilterDropdown.querySelector(`option[value="${kind}"]`)) {
+            const option = document.createElement('option')
+            option.value = kind
+            option.textContent = kindLabels[kind]
+            viewFilterDropdown.appendChild(option)
+        }
+    })
+
+    const hasMultipleOptions = viewFilterDropdown.options.length > 1
+    const hasIndexedDB = Array.from(viewFilterDropdown.options).some(opt =>
+        opt.textContent.includes('IndexedDB')
+    )
+    const hasMoreThanTwo = viewFilterDropdown.options.length > 2
+
+    if ((hasMultipleOptions && !hasIndexedDB) || (hasIndexedDB && hasMoreThanTwo)) {
+        if (viewFilterDropdown.options[0].value !== 'default') {
+            const defaultOption = document.createElement('option')
+            defaultOption.value = 'default'
+            defaultOption.disabled = true
+            defaultOption.selected = true
+            defaultOption.textContent = 'View filter…'
+            viewFilterDropdown.insertBefore(defaultOption, viewFilterDropdown.firstChild)
+        }
+    }
 
     if (isFirstLoad) {
         showTab('records')
@@ -477,6 +545,7 @@ function resetFilter() {
     let searchInput
     if (activeTab === 'records-button') {
         recordsGrid.setFilterModel(null)
+        viewFilterDropdown.selectedIndex = 0
         searchInput = document.getElementById('records-search-input')
     } else if (activeTab === 'manifest-button') {
         manifestGrid.setFilterModel(null)
@@ -533,6 +602,8 @@ function showTab(tabId) {
             }
         }
     })
+
+    viewFilterDropdown.style.display = (tabId === 'log' || tabId === 'manifest') ? 'none' : ''
 
     document.querySelectorAll('.tab-button').forEach(button => {
         button.classList.remove('active-tab-button')
