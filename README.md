@@ -11,21 +11,17 @@ The goal is to explore and understand the internal structure of LevelDB and impl
 - Database debugging
 - Educational insight into LevelDB internals
 
-
 ## Features
 
-- [x] parse `.log` files
-- [x] parse `MANIFEST` files
-- [x] parse `.ldb` files
+- [x] parse `.log`, `.ldb` and `MANIFEST` files
 - [x] decode `Web Storage` entries (applied if path contains `Session Storage` or `Local Storage`)
 - [x] decode `IndexedDB` entries (implemented for common types, applied if path contains `IndexedDB`)
-- [x] view filter for `IndexedDB`, `IndexedDB Entries`, `Session Storage`, `Local Storage` and `Generic (UTF-8)`
+- [x] view filter for `IndexedDB`, `IndexedDB Entries`, `Session Storage`, `Local Storage` and `Generic Entries (UTF-8)`
 
 ## GUI
-The GUI parser can accept both individual files and folders, which are processed recursively.
+The GUI parser can accept individual files and also folders, which are processed recursively.
 
 <img alt="leveldb-gui-interface" src="https://github.com/user-attachments/assets/a3df841b-6623-4e5d-838f-0b83faed630e" />
-
 
 ## CLI
 The CLI parser can parse single `.log`, `.ldb` or `MANIFEST` files. 
