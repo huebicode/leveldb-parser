@@ -558,6 +558,10 @@ pub fn bytes_to_hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("\\x{:02X}", b)).collect()
 }
 
+pub fn bytes_to_hex_raw(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{:02X} ", b)).collect()
+}
+
 pub fn bytes_to_ascii(bytes: &[u8]) -> String {
     bytes
         .iter()

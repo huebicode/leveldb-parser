@@ -417,7 +417,7 @@ pub mod display {
 pub mod export {
     use super::*;
 
-    pub fn csv_string(log: &LogFile, filename: &str, file_path: &str) -> String {
+    pub fn csv_string(log: &LogFile, filename: &str, file_path: &str, hex_view: bool) -> String {
         let mut csv = String::new();
         // Header
         csv.push_str("\"Seq\",\"K\",\"V\",\"Cr\",\"St\",\"BO\",\"C\",\"F\",\"FP\",\"Kind\"\n");
@@ -439,10 +439,20 @@ pub mod export {
                     _ => "unknown",
                 };
 
-                let (key_str, value_str, kind_str) =
-                    decoder::decode_kv(log.storage_kind, &record.key, record.value.as_deref());
-                let key_str = key_str.replace("\"", "\"\"");
-                let value_str = value_str.replace("\"", "\"\"");
+                let mut key_str;
+                let mut value_str;
+                let kind_str;
+
+                if hex_view {
+                    key_str = decoder::bytes_to_hex_raw(&record.key);
+                    value_str = decoder::bytes_to_hex_raw(record.value.as_deref().unwrap_or(&[]));
+                    kind_str = "".to_string();
+                } else {
+                    (key_str, value_str, kind_str) =
+                        decoder::decode_kv(log.storage_kind, &record.key, record.value.as_deref());
+                    key_str = key_str.replace("\"", "\"\"");
+                    value_str = value_str.replace("\"", "\"\"");
+                }
 
                 csv.push_str(&format!(
                     "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",

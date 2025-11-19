@@ -8,7 +8,7 @@ use std::sync::Arc;
 use leveldb_parser_lib::{ldb_parser, log_parser, log_text_parser, manifest_parser};
 
 #[tauri::command]
-pub fn process_dropped_files(window: tauri::Window, paths: Vec<String>) {
+pub fn process_dropped_files(window: tauri::Window, paths: Vec<String>, hex_view: bool) {
     std::thread::spawn(move || {
         let window = Arc::new(window);
 
@@ -23,7 +23,7 @@ pub fn process_dropped_files(window: tauri::Window, paths: Vec<String>) {
 
         all_paths.par_iter().for_each(|path| {
             let window = Arc::clone(&window);
-            process_single_file(&window, path);
+            process_single_file(&window, path, hex_view);
         });
 
         if let Err(e) = window.emit("processing_finished", ()) {
@@ -32,6 +32,7 @@ pub fn process_dropped_files(window: tauri::Window, paths: Vec<String>) {
     });
 }
 
+// helper ----------------------------------------------------------------------
 fn collect_paths(path: &Path, result: &mut Vec<std::path::PathBuf>) {
     if path.exists() {
         if path.is_dir() {
@@ -49,7 +50,7 @@ fn collect_paths(path: &Path, result: &mut Vec<std::path::PathBuf>) {
     }
 }
 
-fn process_single_file(window: &tauri::Window, path: &Path) {
+fn process_single_file(window: &tauri::Window, path: &Path, hex_view: bool) {
     if let Some(file_name) = path.file_name() {
         let file_name_str = file_name.to_string_lossy();
         let file_path_str = path.to_string_lossy();
@@ -57,8 +58,12 @@ fn process_single_file(window: &tauri::Window, path: &Path) {
         if file_name_str.ends_with(".ldb") {
             match ldb_parser::parse_file(path.to_str().unwrap()) {
                 Ok(ldb_file) => {
-                    let csv =
-                        ldb_parser::export::csv_string(&ldb_file, &file_name_str, &file_path_str);
+                    let csv = ldb_parser::export::csv_string(
+                        &ldb_file,
+                        &file_name_str,
+                        &file_path_str,
+                        hex_view,
+                    );
                     if let Err(e) = window.emit("records_csv", csv) {
                         println!("Error emitting LDB CSV: {}", e);
                     }
@@ -68,8 +73,12 @@ fn process_single_file(window: &tauri::Window, path: &Path) {
         } else if file_name_str.ends_with(".log") {
             match log_parser::parse_file(path.to_str().unwrap()) {
                 Ok(log_file) => {
-                    let csv =
-                        log_parser::export::csv_string(&log_file, &file_name_str, &file_path_str);
+                    let csv = log_parser::export::csv_string(
+                        &log_file,
+                        &file_name_str,
+                        &file_path_str,
+                        hex_view,
+                    );
                     if let Err(e) = window.emit("records_csv", csv) {
                         println!("Error emitting Log CSV: {}", e);
                     }

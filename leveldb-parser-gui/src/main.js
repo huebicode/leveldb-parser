@@ -14,13 +14,43 @@ const logButton = document.getElementById('log-button')
 const loadingIndicator = document.getElementById('loading-indicator')
 
 const viewFilterDropdown = document.getElementById('view-filter-select')
+let lastViewFilter = viewFilterDropdown.value
 viewFilterDropdown.addEventListener('change', () => {
-    applyViewFilter(viewFilterDropdown.value)
+    const next = viewFilterDropdown.value
+    applyViewFilter(next, lastViewFilter)
+    lastViewFilter = next
 })
 
-function applyViewFilter(kindValue) {
-    const model = { ...(recordsGrid.getFilterModel() || {}) }
+function applyViewFilter(kindValue, previousKind) {
+    // hex view
+    if (kindValue === 'hex' && recordsGrid.getDisplayedRowCount() > 0) {
+        const pathSet = new Set()
+        recordsGrid.forEachNode(node => {
+            const fp = node.data?.FP
+            if (fp) pathSet.add(fp)
+        })
+        const uniquePaths = [...pathSet]
+        recordsGrid.setGridOption('rowData', [])
+        invoke('process_dropped_files', { paths: uniquePaths, hexView: true })
+        resetFilter()
+        viewFilterDropdown.selectedIndex = viewFilterDropdown.options.length - 1
+        return
+    }
 
+    // reload original records if switching back from hex view
+    if (kindValue !== 'hex' && previousKind === 'hex') {
+        const pathSet = new Set()
+        recordsGrid.forEachNode(node => {
+            const fp = node.data?.FP
+            if (fp) pathSet.add(fp)
+        })
+        const uniquePaths = [...pathSet]
+        recordsGrid.setGridOption('rowData', [])
+        invoke('process_dropped_files', { paths: uniquePaths, hexView: false })
+    }
+
+    // other views
+    const model = { ...(recordsGrid.getFilterModel() || {}) }
     if (kindValue === 'I') {
         model.Kind = {
             filterType: 'text',
@@ -70,7 +100,7 @@ await getCurrentWebview().onDragDropEvent((e) => {
         overlay.classList.remove('active')
         dropAreaWrapper.style.display = 'none'
         contentWrapper.style.display = 'block'
-        invoke('process_dropped_files', { paths: e.payload.paths })
+        invoke('process_dropped_files', { paths: e.payload.paths, hexView: false })
     } else {
         overlay.classList.remove('active')
     }
@@ -161,9 +191,9 @@ const gridOptionsRecords = {
             flex: 0.4,
             minWidth: 40,
         },
-        { field: "K", headerName: "Key", flex: 2, minWidth: 100 },
+        { field: "K", headerName: "Key", flex: 2, minWidth: 100, filter: 'agTextColumnFilter' },
         {
-            field: "V", headerName: "Value", flex: 5, minWidth: 100,
+            field: "V", headerName: "Value", flex: 5, minWidth: 100, filter: 'agTextColumnFilter',
             cellRenderer: largeValRenderer,
             onCellDoubleClicked: (params) => {
                 if (params.value) {
@@ -287,12 +317,12 @@ logTextGrid.addEventListener('filterChanged', onFilterChanged)
 
 let processingTime = null
 listen('processing_started', () => {
-    loadingIndicator.style.display = 'block'
+    loadingIndicator.classList.add('visible')
     processingTime = performance.now()
 })
 
 listen('processing_finished', () => {
-    loadingIndicator.style.display = 'none'
+    loadingIndicator.classList.remove('visible')
     if (processingTime) {
         const duration = ((performance.now() - processingTime) / 1000).toFixed(2)
         const procTime = document.getElementById('processing-time')
@@ -349,13 +379,13 @@ listen('records_csv', e => {
         }
     })
 
-    const hasMultipleOptions = viewFilterDropdown.options.length > 1
+    const hasMultipleOptions = viewFilterDropdown.options.length > 2
     const hasIndexedDB = Array.from(viewFilterDropdown.options).some(opt =>
         opt.textContent.includes('IndexedDB')
     )
-    const hasMoreThanTwo = viewFilterDropdown.options.length > 2
+    const hasMoreThanThree = viewFilterDropdown.options.length > 3
 
-    if ((hasMultipleOptions && !hasIndexedDB) || (hasIndexedDB && hasMoreThanTwo)) {
+    if ((hasMultipleOptions && !hasIndexedDB) || (hasIndexedDB && hasMoreThanThree)) {
         if (viewFilterDropdown.options[0].value !== 'default') {
             const defaultOption = document.createElement('option')
             defaultOption.value = 'default'
@@ -364,6 +394,21 @@ listen('records_csv', e => {
             defaultOption.textContent = 'View filter…'
             viewFilterDropdown.insertBefore(defaultOption, viewFilterDropdown.firstChild)
         }
+    }
+
+    let hexOption = viewFilterDropdown.querySelector('option[value="hex"]')
+    if (!hexOption) {
+        hexOption = document.createElement('option')
+        hexOption.value = 'hex'
+        hexOption.textContent = 'Hex View (Raw)'
+    }
+
+    if (hexOption !== viewFilterDropdown.lastElementChild) {
+        viewFilterDropdown.append(hexOption)
+    }
+
+    if (viewFilterDropdown.options.length === 1 && viewFilterDropdown.options[0].value === 'hex') {
+        viewFilterDropdown.selectedIndex = -1
     }
 
     if (isFirstLoad) {

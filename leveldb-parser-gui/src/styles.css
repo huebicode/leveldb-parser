@@ -141,17 +141,38 @@ html {
     user-select: none;
 }
 
+#view-filter-container {
+    display: flex;
+    margin-left: 8px;
+    gap: 8px;
+}
+
+#view-filter-select {
+    align-self: top;
+    height: 24px;
+    font-size: 10px;
+    background-color: var(--ui-button-bg);
+    border: 1px solid rgb(205, 205, 205);
+    border-radius: 4px;
+}
+
+#loading-indicator-container {
+    align-self: top;
+    padding-top: 4px;
+}
+
 #loading-indicator {
-    position: absolute;
-    left: 100%;
-    align-self: center;
-    margin-bottom: 2px;
+    visibility: hidden;
     border: 3px solid gainsboro;
     border-top: 3px solid orangered;
     border-radius: 100%;
     width: 8px;
     height: 8px;
     animation: spin 0.5s linear infinite;
+}
+
+#loading-indicator.visible {
+    visibility: visible;
 }
 
 @keyframes spin {
@@ -162,17 +183,6 @@ html {
     100% {
         transform: rotate(360deg);
     }
-}
-
-#view-filter-container {
-    margin-inline: 12px;
-    display: flex;
-}
-
-#view-filter-select {
-    align-self: top;
-    height: 24px;
-    font-size: 10px;
 }
 
 #search-container {
