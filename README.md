@@ -1,5 +1,5 @@
 # LevelDB Parser
-[LevelDB](https://github.com/google/leveldb) is a key-value database developed by Google, used among other things in Chromium-based browsers and WebViews, as well as in frameworks such as Electron. 
+[LevelDB](https://github.com/google/leveldb) is a key-value database developed by Google, used among other things in Chromium-based applications. 
 
 This project is part of my master’s thesis in Digital Forensics at the University of Applied Sciences Albstadt-Sigmaringen, Germany, which involves developing a parser for LevelDB. The final thesis will be uploaded here after completion.
 
@@ -17,6 +17,7 @@ The goal is to explore and understand the internal structure of LevelDB and impl
 - [x] decode `Web Storage` entries (applied if path contains `Session Storage` or `Local Storage`)
 - [x] decode `IndexedDB` entries (implemented for common types, applied if path contains `IndexedDB`)
 - [x] view filter for `IndexedDB`, `IndexedDB Entries`, `Session Storage`, `Local Storage` and `Generic Entries (UTF-8)`
+- [x] hex view
 
 ## GUI
 The GUI parser can accept individual files and also folders, which are processed recursively.
