@@ -22,7 +22,7 @@ The goal is to explore and understand the internal structure of LevelDB and impl
 ## GUI
 The GUI parser can accept individual files and folders, which are processed recursively.
 
-<img alt="leveldb-gui-interface" src="https://github.com/user-attachments/assets/a3df841b-6623-4e5d-838f-0b83faed630e" />
+<img alt="leveldb-gui-interface" src="https://github.com/user-attachments/assets/0783e40c-2a65-4c9a-8988-cb29452d6499" />
 
 ## CLI
 The CLI parser can parse single `.log`, `.ldb` or `MANIFEST` files. 
