@@ -1,7 +1,7 @@
 const { getCurrentWebview } = window.__TAURI__.webview
 const { invoke } = window.__TAURI__.core
 const { listen } = window.__TAURI__.event
-const { writeText, readText } = window.__TAURI__.clipboardManager
+const { writeText } = window.__TAURI__.clipboardManager
 
 const overlay = document.getElementById('drop-overlay')
 const dropAreaWrapper = document.getElementById('drop-area-wrapper')
@@ -129,7 +129,7 @@ const valuePopup = document.getElementById('value-popup')
 const popupContent = document.getElementById('popup-content')
 
 function escapeHtml(text) {
-    return text.replace(/[&<>"']/g, function (m) {
+    return text.replace(/[&<>"']/g, (m) => {
         switch (m) {
             case '&': return '&amp;'
             case '<': return '&lt;'
@@ -148,7 +148,7 @@ function showValuePopup(value) {
     if (activeTabButton) {
         const tabId = activeTabButton.id.replace('-button', '')
         const searchInput = document.getElementById(`${tabId}-search-input`)
-        if (searchInput && searchInput.value.trim()) {
+        if (searchInput?.value.trim()) {
             searchTerm = searchInput.value.trim()
         }
     }
@@ -156,7 +156,7 @@ function showValuePopup(value) {
     let filterTerm = ''
     if (activeTabButton && activeTabButton.id === 'records-button') {
         const filterModel = recordsGrid.getFilterModel()
-        if (filterModel.V && filterModel.V.filter) {
+        if (filterModel.V?.filter) {
             filterTerm = filterModel.V.filter.trim()
         }
     }
@@ -219,9 +219,9 @@ const gridOptionsRecords = {
     rowBuffer: 50,
     debounceVerticalScrollbar: true,
     getRowStyle: params => {
-        if (params.data && params.data.Cr && params.data.Cr.includes('failed')) {
+        if (params.data?.Cr?.includes('failed')) {
             return { color: 'red' }
-        } else if (params.data && params.data.St && params.data.St.includes('deleted')) {
+        } else if (params.data?.St?.includes('deleted')) {
             return { backgroundColor: '#f2f2f6' }
         }
         return null
@@ -251,7 +251,7 @@ const gridOptionsManifest = {
     rowBuffer: 50,
     debounceVerticalScrollbar: true,
     getRowStyle: params => {
-        if (params.data && params.data.CRC && params.data.CRC.includes('failed')) {
+        if (params.data?.CRC?.includes('failed')) {
             return { color: 'red' }
         }
         return null
@@ -305,7 +305,7 @@ function updateFilterResetButtonState() {
         searchInput = document.getElementById('log-search-input')
     }
 
-    const hasFilter = gridApi && gridApi.getFilterModel() && Object.keys(gridApi.getFilterModel()).length > 0
+    const hasFilter = gridApi?.getFilterModel() && Object.keys(gridApi.getFilterModel()).length > 0
     const hasSearch = searchInput && searchInput.value.trim().length > 0
 
     document.getElementById('filter-reset-button').disabled = !(hasFilter || hasSearch)
@@ -357,7 +357,7 @@ listen('records_csv', e => {
     const kindSet = new Set()
     // data.Kind column can contain: S, L, I, IE, G
     recordsGrid.forEachNode(node => {
-        if (node.data && node.data.Kind) {
+        if (node.data?.Kind) {
             kindSet.add(node.data.Kind)
         }
     })

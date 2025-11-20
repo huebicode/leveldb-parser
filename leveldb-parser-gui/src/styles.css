@@ -5,7 +5,7 @@
 
 *,
 *::before,
-**::after {
+*::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -166,8 +166,8 @@ html {
     border: 3px solid gainsboro;
     border-top: 3px solid orangered;
     border-radius: 100%;
-    width: 8px;
-    height: 8px;
+    width: 16px;
+    height: 16px;
     animation: spin 0.5s linear infinite;
 }
 
