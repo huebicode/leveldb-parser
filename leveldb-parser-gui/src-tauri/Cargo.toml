@@ -1,11 +1,9 @@
 [package]
 name = "leveldb-parser-gui"
-version = "0.4.1"
+version = "1.0.0"
 description = "A Tauri App"
 authors = ["Alexander Hübert"]
 edition = "2024"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary
