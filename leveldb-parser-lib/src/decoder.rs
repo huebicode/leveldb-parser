@@ -591,6 +591,7 @@ pub fn bytes_to_ascii_with_hex(bytes: &[u8]) -> String {
 fn bytes_to_latin1_hex_escaped(bytes: &[u8]) -> String {
     bytes
         .iter()
+        .filter(|b| !b.is_ascii_control())
         .map(|&b| {
             if b.is_ascii_graphic() || b == 0x20 || b >= 0xA0 {
                 (b as char).to_string()
