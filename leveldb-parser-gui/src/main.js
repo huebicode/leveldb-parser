@@ -206,7 +206,7 @@ const gridOptionsRecords = {
         { field: "BO", comparator: (valueA, valueB) => valueA - valueB, headerName: "Block Offset", flex: 0.4, minWidth: 90 },
         { field: "C", headerName: "Compressed", flex: 0.4, minWidth: 90, cellStyle: { pointerEvents: 'none' } },
         { field: "F", headerName: "File", flex: 0.4, minWidth: 80 },
-        { field: "FP", headerName: "File Path", flex: 0.4, minWidth: 80 },
+        { field: "FP", headerName: "Path", flex: 0.4, minWidth: 80 },
         { field: "Kind", hide: true },
     ],
     defaultColDef: {
@@ -690,7 +690,14 @@ document.getElementById('csv-export-button').addEventListener('click', async () 
     }
 
     if (gridApi) {
-        const csv = gridApi.getDataAsCsv()
+        const csv = gridApi.getDataAsCsv({
+            processCellCallback: params => {
+                // export raw values as string
+                return params.value !== undefined && params.value !== null
+                    ? String(params.value)
+                    : ''
+            }
+        })
 
         const filePath = await window.__TAURI__.dialog.save({
             defaultPath: defaultName,
