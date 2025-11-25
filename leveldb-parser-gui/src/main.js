@@ -1,56 +1,56 @@
-const { getCurrentWebview } = window.__TAURI__.webview
-const { invoke } = window.__TAURI__.core
-const { listen } = window.__TAURI__.event
-const { writeText } = window.__TAURI__.clipboardManager
+const { getCurrentWebview } = window.__TAURI__.webview;
+const { invoke } = window.__TAURI__.core;
+const { listen } = window.__TAURI__.event;
+const { writeText } = window.__TAURI__.clipboardManager;
 
-const overlay = document.getElementById('drop-overlay')
-const dropAreaWrapper = document.getElementById('drop-area-wrapper')
-const contentWrapper = document.getElementById('wrapper')
+const overlay = document.getElementById('drop-overlay');
+const dropAreaWrapper = document.getElementById('drop-area-wrapper');
+const contentWrapper = document.getElementById('wrapper');
 
-const recordsButton = document.getElementById('records-button')
-const manifestButton = document.getElementById('manifest-button')
-const logButton = document.getElementById('log-button')
+const recordsButton = document.getElementById('records-button');
+const manifestButton = document.getElementById('manifest-button');
+const logButton = document.getElementById('log-button');
 
-const loadingIndicator = document.getElementById('loading-indicator')
+const loadingIndicator = document.getElementById('loading-indicator');
 
-const viewFilterDropdown = document.getElementById('view-filter-select')
-let lastViewFilter = viewFilterDropdown.value
+const viewFilterDropdown = document.getElementById('view-filter-select');
+let lastViewFilter = viewFilterDropdown.value;
 viewFilterDropdown.addEventListener('change', () => {
-    const next = viewFilterDropdown.value
-    applyViewFilter(next, lastViewFilter)
-    lastViewFilter = next
-})
+    const next = viewFilterDropdown.value;
+    applyViewFilter(next, lastViewFilter);
+    lastViewFilter = next;
+});
 
 function applyViewFilter(kindValue, previousKind) {
     // hex view
     if (kindValue === 'hex' && recordsGrid.getDisplayedRowCount() > 0) {
-        const pathSet = new Set()
+        const pathSet = new Set();
         recordsGrid.forEachNode(node => {
-            const fp = node.data?.FP
-            if (fp) pathSet.add(fp)
-        })
-        const uniquePaths = [...pathSet]
-        recordsGrid.setGridOption('rowData', [])
-        invoke('process_dropped_files', { paths: uniquePaths, hexView: true })
-        resetFilter()
-        viewFilterDropdown.selectedIndex = viewFilterDropdown.options.length - 1
-        return
+            const fp = node.data?.FP;
+            if (fp) pathSet.add(fp);
+        });
+        const uniquePaths = [...pathSet];
+        recordsGrid.setGridOption('rowData', []);
+        invoke('process_dropped_files', { paths: uniquePaths, hexView: true });
+        resetFilter();
+        viewFilterDropdown.selectedIndex = viewFilterDropdown.options.length - 1;
+        return;
     }
 
     // reload original records if switching back from hex view
     if (kindValue !== 'hex' && previousKind === 'hex') {
-        const pathSet = new Set()
+        const pathSet = new Set();
         recordsGrid.forEachNode(node => {
-            const fp = node.data?.FP
-            if (fp) pathSet.add(fp)
-        })
-        const uniquePaths = [...pathSet]
-        recordsGrid.setGridOption('rowData', [])
-        invoke('process_dropped_files', { paths: uniquePaths, hexView: false })
+            const fp = node.data?.FP;
+            if (fp) pathSet.add(fp);
+        });
+        const uniquePaths = [...pathSet];
+        recordsGrid.setGridOption('rowData', []);
+        invoke('process_dropped_files', { paths: uniquePaths, hexView: false });
     }
 
     // other views
-    const model = { ...(recordsGrid.getFilterModel() || {}) }
+    const model = { ...(recordsGrid.getFilterModel() || {}) };
     if (kindValue === 'I') {
         model.Kind = {
             filterType: 'text',
@@ -59,126 +59,126 @@ function applyViewFilter(kindValue, previousKind) {
                 { type: 'equals', filter: 'I' },
                 { type: 'equals', filter: 'IE' },
             ],
-        }
+        };
     } else {
-        model.Kind = { filterType: 'text', type: 'equals', filter: kindValue }
+        model.Kind = { filterType: 'text', type: 'equals', filter: kindValue };
     }
 
-    recordsGrid.setFilterModel(model)
+    recordsGrid.setFilterModel(model);
 }
 
 // helper ----------------------------------------------------------------------
 function parseCsvLine(line) {
-    const result = []
-    let current = ''
-    let inQuotes = false
+    const result = [];
+    let current = '';
+    let inQuotes = false;
 
     for (let i = 0; i < line.length; i++) {
-        const char = line[i]
+        const char = line[i];
         if (char === '"') {
             if (inQuotes && line[i + 1] === '"') {
-                current += '"'
-                i++ // skip next quote
+                current += '"';
+                i++; // skip next quote
             } else {
-                inQuotes = !inQuotes
+                inQuotes = !inQuotes;
             }
         } else if (char === ',' && !inQuotes) {
-            result.push(current)
-            current = ''
+            result.push(current);
+            current = '';
         } else {
-            current += char
+            current += char;
         }
     }
-    result.push(current)
-    return result
+    result.push(current);
+    return result;
 }
 
 await getCurrentWebview().onDragDropEvent((e) => {
     if (e.payload.type === 'over') {
-        overlay.classList.add('active')
+        overlay.classList.add('active');
     } else if (e.payload.type === 'drop') {
-        overlay.classList.remove('active')
-        dropAreaWrapper.style.display = 'none'
-        contentWrapper.style.display = 'block'
-        invoke('process_dropped_files', { paths: e.payload.paths, hexView: false })
+        overlay.classList.remove('active');
+        dropAreaWrapper.style.display = 'none';
+        contentWrapper.style.display = 'block';
+        invoke('process_dropped_files', { paths: e.payload.paths, hexView: false });
     } else {
-        overlay.classList.remove('active')
+        overlay.classList.remove('active');
     }
-})
+});
 
-const CUT_OFF_LEN = 300
+const CUT_OFF_LEN = 300;
 const largeValRenderer = (params) => {
-    const fullValue = params.value ?? ''
-    const isLarge = fullValue.length > CUT_OFF_LEN
+    const fullValue = params.value ?? '';
+    const isLarge = fullValue.length > CUT_OFF_LEN;
 
-    const container = document.createElement('span')
-    container.textContent = isLarge ? fullValue.substring(0, CUT_OFF_LEN) : fullValue
+    const container = document.createElement('span');
+    container.textContent = isLarge ? fullValue.substring(0, CUT_OFF_LEN) : fullValue;
 
     if (isLarge) {
-        const remainingChars = fullValue.length - CUT_OFF_LEN
-        const badge = document.createElement('span')
-        badge.style.color = 'red'
-        badge.textContent = ` [+${remainingChars.toLocaleString()} Chars]`
-        container.appendChild(badge)
+        const remainingChars = fullValue.length - CUT_OFF_LEN;
+        const badge = document.createElement('span');
+        badge.style.color = 'red';
+        badge.textContent = ` [+${remainingChars.toLocaleString()} Chars]`;
+        container.appendChild(badge);
     }
 
-    return container
-}
+    return container;
+};
 
-const valuePopup = document.getElementById('value-popup')
-const popupContent = document.getElementById('popup-content')
+const valuePopup = document.getElementById('value-popup');
+const popupContent = document.getElementById('popup-content');
 
 function escapeHtml(text) {
     return text.replace(/[&<>"']/g, (m) => {
         switch (m) {
-            case '&': return '&amp;'
-            case '<': return '&lt;'
-            case '>': return '&gt;'
-            case '"': return '&quot;'
-            case "'": return '&#39;'
-            default: return m
+            case '&': return '&amp;';
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '"': return '&quot;';
+            case "'": return '&#39;';
+            default: return m;
         }
-    })
+    });
 }
 
 function showValuePopup(value) {
-    const activeTabButton = document.querySelector('.active-tab-button')
+    const activeTabButton = document.querySelector('.active-tab-button');
 
-    let searchTerm = ''
+    let searchTerm = '';
     if (activeTabButton) {
-        const tabId = activeTabButton.id.replace('-button', '')
-        const searchInput = document.getElementById(`${tabId}-search-input`)
+        const tabId = activeTabButton.id.replace('-button', '');
+        const searchInput = document.getElementById(`${tabId}-search-input`);
         if (searchInput?.value.trim()) {
-            searchTerm = searchInput.value.trim()
+            searchTerm = searchInput.value.trim();
         }
     }
 
-    let filterTerm = ''
+    let filterTerm = '';
     if (activeTabButton && activeTabButton.id === 'records-button') {
-        const filterModel = recordsGrid.getFilterModel()
+        const filterModel = recordsGrid.getFilterModel();
         if (filterModel.V?.filter) {
-            filterTerm = filterModel.V.filter.trim()
+            filterTerm = filterModel.V.filter.trim();
         }
     }
 
-    let allTerms = []
-    if (searchTerm) allTerms.push(searchTerm)
-    if (filterTerm) allTerms.push(filterTerm)
-    allTerms = allTerms.join(' ').trim()
+    let allTerms = [];
+    if (searchTerm) allTerms.push(searchTerm);
+    if (filterTerm) allTerms.push(filterTerm);
+    allTerms = allTerms.join(' ').trim();
 
     if (!allTerms) {
-        popupContent.textContent = value
+        popupContent.textContent = value;
     } else {
         // escape HTML and highlight the whole phrase
-        let html = escapeHtml(value)
+        let html = escapeHtml(value);
 
-        const escapedPhrase = allTerms.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const regex = new RegExp(escapedPhrase, 'gi')
-        html = html.replace(regex, match => `<mark>${match}</mark>`)
+        const escapedPhrase = allTerms.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapedPhrase, 'gi');
+        html = html.replace(regex, match => `<mark>${match}</mark>`);
 
-        popupContent.innerHTML = html
+        popupContent.innerHTML = html;
     }
-    valuePopup.style.display = 'flex'
+    valuePopup.style.display = 'flex';
 }
 
 // records-grid ----------------------------------------------------------------
@@ -197,7 +197,7 @@ const gridOptionsRecords = {
             cellRenderer: largeValRenderer,
             onCellDoubleClicked: (params) => {
                 if (params.value) {
-                    showValuePopup(params.value)
+                    showValuePopup(params.value);
                 }
             },
         },
@@ -220,16 +220,16 @@ const gridOptionsRecords = {
     debounceVerticalScrollbar: true,
     getRowStyle: params => {
         if (params.data?.Cr?.includes('failed')) {
-            return { color: 'red' }
+            return { color: 'red' };
         } else if (params.data?.St?.includes('deleted')) {
-            return { backgroundColor: '#f2f2f6' }
+            return { backgroundColor: '#f2f2f6' };
         }
-        return null
+        return null;
     }
-}
+};
 
-const recordsGridElem = document.querySelector('#records-grid')
-const recordsGrid = agGrid.createGrid(recordsGridElem, gridOptionsRecords)
+const recordsGridElem = document.querySelector('#records-grid');
+const recordsGrid = agGrid.createGrid(recordsGridElem, gridOptionsRecords);
 
 // manifest-grid ---------------------------------------------------------------
 const gridOptionsManifest = {
@@ -252,14 +252,14 @@ const gridOptionsManifest = {
     debounceVerticalScrollbar: true,
     getRowStyle: params => {
         if (params.data?.CRC?.includes('failed')) {
-            return { color: 'red' }
+            return { color: 'red' };
         }
-        return null
+        return null;
     }
-}
+};
 
-const manifestGridElem = document.querySelector('#manifest-grid')
-const manifestGrid = agGrid.createGrid(manifestGridElem, gridOptionsManifest)
+const manifestGridElem = document.querySelector('#manifest-grid');
+const manifestGrid = agGrid.createGrid(manifestGridElem, gridOptionsManifest);
 
 // log-text-grid ---------------------------------------------------------------
 const gridOptionsLogText = {
@@ -279,88 +279,88 @@ const gridOptionsLogText = {
     animateRows: false,
     rowBuffer: 50,
     debounceVerticalScrollbar: true,
-}
+};
 
-const logTextGridElem = document.querySelector('#log-text-grid')
-const logTextGrid = agGrid.createGrid(logTextGridElem, gridOptionsLogText)
+const logTextGridElem = document.querySelector('#log-text-grid');
+const logTextGrid = agGrid.createGrid(logTextGridElem, gridOptionsLogText);
 
 // listener --------------------------------------------------------------------
 function onFilterChanged() {
-    updateRowCount()
-    updateFilterResetButtonState()
+    updateRowCount();
+    updateFilterResetButtonState();
 }
 
 function updateFilterResetButtonState() {
-    const activeTab = document.querySelector('.active-tab-button').id
-    let gridApi, searchInput
+    const activeTab = document.querySelector('.active-tab-button').id;
+    let gridApi, searchInput;
 
     if (activeTab === 'records-button') {
-        gridApi = recordsGrid
-        searchInput = document.getElementById('records-search-input')
+        gridApi = recordsGrid;
+        searchInput = document.getElementById('records-search-input');
     } else if (activeTab === 'manifest-button') {
-        gridApi = manifestGrid
-        searchInput = document.getElementById('manifest-search-input')
+        gridApi = manifestGrid;
+        searchInput = document.getElementById('manifest-search-input');
     } else if (activeTab === 'log-button') {
-        gridApi = logTextGrid
-        searchInput = document.getElementById('log-search-input')
+        gridApi = logTextGrid;
+        searchInput = document.getElementById('log-search-input');
     }
 
-    const hasFilter = gridApi?.getFilterModel() && Object.keys(gridApi.getFilterModel()).length > 0
-    const hasSearch = searchInput && searchInput.value.trim().length > 0
+    const hasFilter = gridApi?.getFilterModel() && Object.keys(gridApi.getFilterModel()).length > 0;
+    const hasSearch = searchInput && searchInput.value.trim().length > 0;
 
-    document.getElementById('filter-reset-button').disabled = !(hasFilter || hasSearch)
+    document.getElementById('filter-reset-button').disabled = !(hasFilter || hasSearch);
 }
 
-recordsGrid.addEventListener('filterChanged', onFilterChanged)
-manifestGrid.addEventListener('filterChanged', onFilterChanged)
-logTextGrid.addEventListener('filterChanged', onFilterChanged)
+recordsGrid.addEventListener('filterChanged', onFilterChanged);
+manifestGrid.addEventListener('filterChanged', onFilterChanged);
+logTextGrid.addEventListener('filterChanged', onFilterChanged);
 
-let processingTime = null
+let processingTime = null;
 listen('processing_started', () => {
-    loadingIndicator.classList.add('visible')
-    processingTime = performance.now()
-})
+    loadingIndicator.classList.add('visible');
+    processingTime = performance.now();
+});
 
 listen('processing_finished', () => {
-    loadingIndicator.classList.remove('visible')
+    loadingIndicator.classList.remove('visible');
     if (processingTime) {
-        const duration = ((performance.now() - processingTime) / 1000).toFixed(2)
-        const procTime = document.getElementById('processing-time')
-        procTime.firstElementChild.textContent = duration
-        procTime.style.display = 'block'
-        processingTime = null
+        const duration = ((performance.now() - processingTime) / 1000).toFixed(2);
+        const procTime = document.getElementById('processing-time');
+        procTime.firstElementChild.textContent = duration;
+        procTime.style.display = 'block';
+        processingTime = null;
     }
-})
+});
 
-let isFirstLoad = true
+let isFirstLoad = true;
 listen('records_csv', e => {
-    const csv = e.payload
-    const [headerLine, ...lines] = csv.trim().split('\n')
-    const headers = parseCsvLine(headerLine)
+    const csv = e.payload;
+    const [headerLine, ...lines] = csv.trim().split('\n');
+    const headers = parseCsvLine(headerLine);
 
     const rowData = lines.map(line => {
-        const values = parseCsvLine(line)
-        const obj = {}
+        const values = parseCsvLine(line);
+        const obj = {};
         headers.forEach((header, idx) => {
             if (header === "C") {
-                obj[header] = values[idx] === "true"
+                obj[header] = values[idx] === "true";
             } else {
-                obj[header] = values[idx]
+                obj[header] = values[idx];
             }
-        })
-        return obj
-    })
+        });
+        return obj;
+    });
 
-    recordsGrid.applyTransaction({ add: rowData })
+    recordsGrid.applyTransaction({ add: rowData });
 
     // create view filter dropdown dynamically
-    const kindSet = new Set()
+    const kindSet = new Set();
     // data.Kind column can contain: S, L, I, IE, G
     recordsGrid.forEachNode(node => {
         if (node.data?.Kind) {
-            kindSet.add(node.data.Kind)
+            kindSet.add(node.data.Kind);
         }
-    })
+    });
 
     const kindLabels = {
         S: 'Session Storage',
@@ -368,325 +368,325 @@ listen('records_csv', e => {
         I: 'IndexedDB',
         IE: 'IndexedDB (Entries)',
         G: 'Generic (UTF-8)'
-    }
+    };
 
     kindSet.forEach(kind => {
         if (kindLabels[kind] && !viewFilterDropdown.querySelector(`option[value="${kind}"]`)) {
-            const option = document.createElement('option')
-            option.value = kind
-            option.textContent = kindLabels[kind]
-            viewFilterDropdown.appendChild(option)
+            const option = document.createElement('option');
+            option.value = kind;
+            option.textContent = kindLabels[kind];
+            viewFilterDropdown.appendChild(option);
         }
-    })
+    });
 
-    const hasMultipleOptions = viewFilterDropdown.options.length > 2
+    const hasMultipleOptions = viewFilterDropdown.options.length > 2;
     const hasIndexedDB = Array.from(viewFilterDropdown.options).some(opt =>
         opt.textContent.includes('IndexedDB')
-    )
-    const hasMoreThanThree = viewFilterDropdown.options.length > 3
+    );
+    const hasMoreThanThree = viewFilterDropdown.options.length > 3;
 
     if ((hasMultipleOptions && !hasIndexedDB) || (hasIndexedDB && hasMoreThanThree)) {
         if (viewFilterDropdown.options[0].value !== 'default') {
-            const defaultOption = document.createElement('option')
-            defaultOption.value = 'default'
-            defaultOption.disabled = true
-            defaultOption.selected = true
-            defaultOption.textContent = 'View filter…'
-            viewFilterDropdown.insertBefore(defaultOption, viewFilterDropdown.firstChild)
+            const defaultOption = document.createElement('option');
+            defaultOption.value = 'default';
+            defaultOption.disabled = true;
+            defaultOption.selected = true;
+            defaultOption.textContent = 'View filter…';
+            viewFilterDropdown.insertBefore(defaultOption, viewFilterDropdown.firstChild);
         }
     }
 
-    let hexOption = viewFilterDropdown.querySelector('option[value="hex"]')
+    let hexOption = viewFilterDropdown.querySelector('option[value="hex"]');
     if (!hexOption) {
-        hexOption = document.createElement('option')
-        hexOption.value = 'hex'
-        hexOption.textContent = 'Hex View (Raw)'
+        hexOption = document.createElement('option');
+        hexOption.value = 'hex';
+        hexOption.textContent = 'Hex View (Raw)';
     }
 
     if (hexOption !== viewFilterDropdown.lastElementChild) {
-        viewFilterDropdown.append(hexOption)
+        viewFilterDropdown.append(hexOption);
     }
 
     if (viewFilterDropdown.options.length === 1 && viewFilterDropdown.options[0].value === 'hex') {
-        viewFilterDropdown.selectedIndex = -1
+        viewFilterDropdown.selectedIndex = -1;
     }
 
     if (isFirstLoad) {
-        showTab('records')
-        isFirstLoad = false
+        showTab('records');
+        isFirstLoad = false;
     }
-    updateRowCount()
-})
+    updateRowCount();
+});
 
 listen('manifest_csv', e => {
-    const csv = e.payload
-    const [headerLine, ...lines] = csv.trim().split('\n')
-    const headers = parseCsvLine(headerLine)
+    const csv = e.payload;
+    const [headerLine, ...lines] = csv.trim().split('\n');
+    const headers = parseCsvLine(headerLine);
 
     const rowData = lines.map(line => {
-        const values = parseCsvLine(line)
-        const obj = {}
+        const values = parseCsvLine(line);
+        const obj = {};
         headers.forEach((header, idx) => {
-            obj[header] = values[idx]
-        })
-        return obj
-    })
+            obj[header] = values[idx];
+        });
+        return obj;
+    });
 
-    manifestGrid.applyTransaction({ add: rowData })
+    manifestGrid.applyTransaction({ add: rowData });
 
     if (!recordsButton.classList.contains('active-tab-button')) {
-        showTab('manifest')
+        showTab('manifest');
     }
-    updateRowCount()
-})
+    updateRowCount();
+});
 
 listen('log_text_csv', e => {
-    const csv = e.payload
-    const [headerLine, ...lines] = csv.trim().split('\n')
-    const headers = parseCsvLine(headerLine)
+    const csv = e.payload;
+    const [headerLine, ...lines] = csv.trim().split('\n');
+    const headers = parseCsvLine(headerLine);
 
     const rowData = lines.map(line => {
-        const values = parseCsvLine(line)
-        const obj = {}
+        const values = parseCsvLine(line);
+        const obj = {};
         headers.forEach((header, idx) => {
-            obj[header] = values[idx]
-        })
-        return obj
-    })
+            obj[header] = values[idx];
+        });
+        return obj;
+    });
 
-    logTextGrid.applyTransaction({ add: rowData })
+    logTextGrid.applyTransaction({ add: rowData });
 
     if (!recordsButton.classList.contains('active-tab-button') && !manifestButton.classList.contains('active-tab-button')) {
-        showTab('log')
+        showTab('log');
     }
-    updateRowCount()
-})
+    updateRowCount();
+});
 
 // value popup
 document.addEventListener('mousedown', (e) => {
     if (valuePopup.style.display !== 'none' && !popupContent.contains(e.target)) {
-        valuePopup.style.display = 'none'
+        valuePopup.style.display = 'none';
     }
-})
+});
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && valuePopup.style.display !== 'none') {
-        valuePopup.style.display = 'none'
+        valuePopup.style.display = 'none';
     }
-})
+});
 
 // copy to clipboard
 document.addEventListener('keydown', async (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'c' && valuePopup.style.display === 'none') {
-        e.preventDefault()
+        e.preventDefault();
 
-        const activeTab = document.querySelector('.active-tab-button').id
-        let activeGrid
+        const activeTab = document.querySelector('.active-tab-button').id;
+        let activeGrid;
 
         if (activeTab === 'records-button') {
-            activeGrid = recordsGrid
+            activeGrid = recordsGrid;
         } else if (activeTab === 'manifest-button') {
-            activeGrid = manifestGrid
+            activeGrid = manifestGrid;
         } else if (activeTab === 'log-button') {
-            activeGrid = logTextGrid
+            activeGrid = logTextGrid;
         }
 
         if (activeGrid) {
-            const focusedCell = getFocusedCellValue(activeGrid)
+            const focusedCell = getFocusedCellValue(activeGrid);
             if (focusedCell !== undefined) {
-                await writeText(focusedCell)
+                await writeText(focusedCell);
             }
         }
     }
-})
+});
 
 function getFocusedCellValue(gridApi) {
-    const focusedCell = gridApi.getFocusedCell()
-    const rowNode = gridApi.getDisplayedRowAtIndex(focusedCell.rowIndex)
-    return rowNode.data[focusedCell.column.getColId()]
+    const focusedCell = gridApi.getFocusedCell();
+    const rowNode = gridApi.getDisplayedRowAtIndex(focusedCell.rowIndex);
+    return rowNode.data[focusedCell.column.getColId()];
 }
 
 // search inputs (quick filter)
-let searchTimeout = null
-let searchFrame = null
+let searchTimeout = null;
+let searchFrame = null;
 document.querySelectorAll('[id$="search-input"]').forEach(inputElement => {
-    const prefix = inputElement.id.replace('-search-input', '')
-    const inputContainer = inputElement.closest('.input-container')
-    inputContainer.style.display = 'none'
+    const prefix = inputElement.id.replace('-search-input', '');
+    const inputContainer = inputElement.closest('.input-container');
+    inputContainer.style.display = 'none';
 
-    const clearButton = document.getElementById(`${prefix}-clear-button`)
-    clearButton.style.display = 'none'
+    const clearButton = document.getElementById(`${prefix}-clear-button`);
+    clearButton.style.display = 'none';
 
-    let gridApi
+    let gridApi;
     switch (prefix) {
         case 'records':
-            gridApi = recordsGrid
-            break
+            gridApi = recordsGrid;
+            break;
         case 'manifest':
-            gridApi = manifestGrid
-            break
+            gridApi = manifestGrid;
+            break;
         case 'log':
-            gridApi = logTextGrid
-            break
+            gridApi = logTextGrid;
+            break;
     }
 
     inputElement.addEventListener('input', function () {
-        gridApi.setGridOption('loading', true)
+        gridApi.setGridOption('loading', true);
 
         if (clearButton) {
-            clearButton.style.display = this.value ? 'inline-block' : 'none'
+            clearButton.style.display = this.value ? 'inline-block' : 'none';
         }
 
         if (searchTimeout) {
-            clearTimeout(searchTimeout)
+            clearTimeout(searchTimeout);
         }
         if (searchFrame) {
-            cancelAnimationFrame(searchFrame)
+            cancelAnimationFrame(searchFrame);
         }
 
         // debounce
         searchTimeout = setTimeout(() => {
             searchFrame = requestAnimationFrame(() => {
-                const searchValue = this.value.trim()
+                const searchValue = this.value.trim();
 
                 if (searchValue) {
                     // custom filter function for phrase search
-                    gridApi.setGridOption('isExternalFilterPresent', () => true)
+                    gridApi.setGridOption('isExternalFilterPresent', () => true);
                     gridApi.setGridOption('doesExternalFilterPass', (node) => {
-                        const data = node.data
-                        const searchLower = searchValue.toLowerCase()
+                        const data = node.data;
+                        const searchLower = searchValue.toLowerCase();
 
                         // check if any field contains the exact phrase
                         return Object.values(data).some(value => {
-                            if (value === null || value === undefined) return false
-                            return String(value).toLowerCase().includes(searchLower)
-                        })
-                    })
-                    gridApi.onFilterChanged()
+                            if (value === null || value === undefined) return false;
+                            return String(value).toLowerCase().includes(searchLower);
+                        });
+                    });
+                    gridApi.onFilterChanged();
                 } else {
                     // clear external filter
-                    gridApi.setGridOption('isExternalFilterPresent', () => false)
-                    gridApi.onFilterChanged()
+                    gridApi.setGridOption('isExternalFilterPresent', () => false);
+                    gridApi.onFilterChanged();
                 }
 
-                gridApi.setGridOption('loading', false)
-            })
-        }, 300)
-    })
+                gridApi.setGridOption('loading', false);
+            });
+        }, 300);
+    });
 
     if (clearButton) {
         clearButton.addEventListener('click', () => {
-            inputElement.value = ''
-            clearButton.style.display = 'none'
-            inputElement.dispatchEvent(new Event('input'))
-            inputElement.focus()
-        })
+            inputElement.value = '';
+            clearButton.style.display = 'none';
+            inputElement.dispatchEvent(new Event('input'));
+            inputElement.focus();
+        });
     }
-})
+});
 
 // filter reset button
 function resetFilter() {
-    const activeTab = document.querySelector('.active-tab-button').id
-    let searchInput
+    const activeTab = document.querySelector('.active-tab-button').id;
+    let searchInput;
     if (activeTab === 'records-button') {
-        recordsGrid.setFilterModel(null)
-        viewFilterDropdown.selectedIndex = 0
-        searchInput = document.getElementById('records-search-input')
+        recordsGrid.setFilterModel(null);
+        viewFilterDropdown.selectedIndex = 0;
+        searchInput = document.getElementById('records-search-input');
     } else if (activeTab === 'manifest-button') {
-        manifestGrid.setFilterModel(null)
-        searchInput = document.getElementById('manifest-search-input')
+        manifestGrid.setFilterModel(null);
+        searchInput = document.getElementById('manifest-search-input');
     } else if (activeTab === 'log-button') {
-        logTextGrid.setFilterModel(null)
-        searchInput = document.getElementById('log-search-input')
+        logTextGrid.setFilterModel(null);
+        searchInput = document.getElementById('log-search-input');
     }
     if (searchInput) {
-        searchInput.value = ''
-        searchInput.dispatchEvent(new Event('input'))
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
     }
-    updateFilterResetButtonState()
+    updateFilterResetButtonState();
 }
 
 document.querySelector('#filter-reset-button').addEventListener('click', () => {
-    resetFilter()
-})
+    resetFilter();
+});
 
 // reload button
 document.querySelector('#reload-button').addEventListener('click', () => {
-    window.location.reload()
-})
+    window.location.reload();
+});
 
 // tab switching
 recordsButton.addEventListener('click', () => {
-    showTab('records')
-})
+    showTab('records');
+});
 
 manifestButton.addEventListener('click', () => {
-    showTab('manifest')
-})
+    showTab('manifest');
+});
 
 logButton.addEventListener('click', () => {
-    showTab('log')
-})
+    showTab('log');
+});
 
 function showTab(tabId) {
-    const tabs = ['records', 'manifest', 'log']
+    const tabs = ['records', 'manifest', 'log'];
     tabs.forEach(id => {
-        const el = document.getElementById(id)
+        const el = document.getElementById(id);
         if (el) {
-            el.style.display = (id === tabId) ? 'block' : 'none'
+            el.style.display = (id === tabId) ? 'block' : 'none';
         }
 
-        const searchInput = document.getElementById(`${id}-search-input`)
+        const searchInput = document.getElementById(`${id}-search-input`);
         if (searchInput) {
-            const inputContainer = searchInput.closest('.input-container')
-            inputContainer.style.display = (id === tabId) ? 'block' : 'none'
+            const inputContainer = searchInput.closest('.input-container');
+            inputContainer.style.display = (id === tabId) ? 'block' : 'none';
 
-            const clearButton = document.getElementById(`${id}-clear-button`)
+            const clearButton = document.getElementById(`${id}-clear-button`);
             if (clearButton) {
-                clearButton.style.display = (id === tabId && searchInput.value) ? 'inline-block' : 'none'
+                clearButton.style.display = (id === tabId && searchInput.value) ? 'inline-block' : 'none';
             }
         }
-    })
+    });
 
-    viewFilterDropdown.style.display = (tabId === 'log' || tabId === 'manifest') ? 'none' : ''
+    viewFilterDropdown.style.display = (tabId === 'log' || tabId === 'manifest') ? 'none' : '';
 
     document.querySelectorAll('.tab-button').forEach(button => {
-        button.classList.remove('active-tab-button')
-    })
+        button.classList.remove('active-tab-button');
+    });
 
-    document.getElementById(`${tabId}-button`).classList.add('active-tab-button')
-    updateRowCount()
-    updateFilterResetButtonState()
+    document.getElementById(`${tabId}-button`).classList.add('active-tab-button');
+    updateRowCount();
+    updateFilterResetButtonState();
 }
 
 function updateRowCount() {
-    const activeTab = document.querySelector('.active-tab-button').id
-    let gridApi
+    const activeTab = document.querySelector('.active-tab-button').id;
+    let gridApi;
     if (activeTab === 'records-button') {
-        gridApi = recordsGrid
+        gridApi = recordsGrid;
     } else if (activeTab === 'manifest-button') {
-        gridApi = manifestGrid
+        gridApi = manifestGrid;
     } else if (activeTab === 'log-button') {
-        gridApi = logTextGrid
+        gridApi = logTextGrid;
     }
-    const count = gridApi ? gridApi.getDisplayedRowCount() : 0
-    document.getElementById('row-count').textContent = count
+    const count = gridApi ? gridApi.getDisplayedRowCount() : 0;
+    document.getElementById('row-count').textContent = count;
 }
 
 // export as CSV
 document.getElementById('csv-export-button').addEventListener('click', async () => {
-    const activeTab = document.querySelector('.active-tab-button').id
-    let gridApi, defaultName
+    const activeTab = document.querySelector('.active-tab-button').id;
+    let gridApi, defaultName;
 
     if (activeTab === 'records-button') {
-        gridApi = recordsGrid
-        defaultName = 'records.csv'
+        gridApi = recordsGrid;
+        defaultName = 'records.csv';
     } else if (activeTab === 'manifest-button') {
-        gridApi = manifestGrid
-        defaultName = 'manifest.csv'
+        gridApi = manifestGrid;
+        defaultName = 'manifest.csv';
     } else if (activeTab === 'log-button') {
-        gridApi = logTextGrid
-        defaultName = 'log.csv'
+        gridApi = logTextGrid;
+        defaultName = 'log.csv';
     }
 
     if (gridApi) {
@@ -695,69 +695,69 @@ document.getElementById('csv-export-button').addEventListener('click', async () 
                 // export raw values as string
                 return params.value !== undefined && params.value !== null
                     ? String(params.value)
-                    : ''
+                    : '';
             }
-        })
+        });
 
         const filePath = await window.__TAURI__.dialog.save({
             defaultPath: defaultName,
             filters: [{ name: 'CSV', extensions: ['csv'] }]
-        })
+        });
 
         if (filePath) {
-            await window.__TAURI__.fs.writeTextFile(filePath, csv)
+            await window.__TAURI__.fs.writeTextFile(filePath, csv);
         }
     }
-})
+});
 
 // tooltips
 document.querySelectorAll('[data-tooltip]').forEach(btn => {
-    let tooltipDiv
-    let tooltipTimeout
+    let tooltipDiv;
+    let tooltipTimeout;
 
     btn.addEventListener('mouseenter', () => {
-        const text = btn.getAttribute('data-tooltip')
-        if (!text) return
+        const text = btn.getAttribute('data-tooltip');
+        if (!text) return;
 
         tooltipTimeout = setTimeout(() => {
-            tooltipDiv = document.createElement('div')
-            tooltipDiv.textContent = text
-            tooltipDiv.style.position = 'absolute'
-            tooltipDiv.style.background = '#333'
-            tooltipDiv.style.color = '#fff'
-            tooltipDiv.style.padding = '6px 10px'
-            tooltipDiv.style.borderRadius = '4px'
-            tooltipDiv.style.fontSize = '13px'
-            tooltipDiv.style.whiteSpace = 'nowrap'
-            tooltipDiv.style.zIndex = '9999'
-            tooltipDiv.style.pointerEvents = 'none'
-            tooltipDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'
-            tooltipDiv.style.textAlign = 'center'
+            tooltipDiv = document.createElement('div');
+            tooltipDiv.textContent = text;
+            tooltipDiv.style.position = 'absolute';
+            tooltipDiv.style.background = '#333';
+            tooltipDiv.style.color = '#fff';
+            tooltipDiv.style.padding = '6px 10px';
+            tooltipDiv.style.borderRadius = '4px';
+            tooltipDiv.style.fontSize = '13px';
+            tooltipDiv.style.whiteSpace = 'nowrap';
+            tooltipDiv.style.zIndex = '9999';
+            tooltipDiv.style.pointerEvents = 'none';
+            tooltipDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+            tooltipDiv.style.textAlign = 'center';
 
-            document.body.appendChild(tooltipDiv)
+            document.body.appendChild(tooltipDiv);
 
             // position below the button
-            const rect = btn.getBoundingClientRect()
-            tooltipDiv.style.top = `${rect.bottom + 6}px`
-            tooltipDiv.style.left = `${rect.left + rect.width / 2}px`
-            tooltipDiv.style.transform = 'translateX(-50%)'
+            const rect = btn.getBoundingClientRect();
+            tooltipDiv.style.top = `${rect.bottom + 6}px`;
+            tooltipDiv.style.left = `${rect.left + rect.width / 2}px`;
+            tooltipDiv.style.transform = 'translateX(-50%)';
 
             // prevent overflow
-            const tipRect = tooltipDiv.getBoundingClientRect()
+            const tipRect = tooltipDiv.getBoundingClientRect();
             if (tipRect.right > window.innerWidth) {
-                tooltipDiv.style.left = `${window.innerWidth - tipRect.width / 2 - 8}px`
+                tooltipDiv.style.left = `${window.innerWidth - tipRect.width / 2 - 8}px`;
             }
             if (tipRect.left < 0) {
-                tooltipDiv.style.left = `${tipRect.width / 2 + 8}px`
+                tooltipDiv.style.left = `${tipRect.width / 2 + 8}px`;
             }
-        }, 500)
-    })
+        }, 500);
+    });
 
     btn.addEventListener('mouseleave', () => {
-        clearTimeout(tooltipTimeout)
+        clearTimeout(tooltipTimeout);
         if (tooltipDiv) {
-            tooltipDiv.remove()
-            tooltipDiv = null
+            tooltipDiv.remove();
+            tooltipDiv = null;
         }
-    })
-})
+    });
+});
